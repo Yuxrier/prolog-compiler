@@ -1,3 +1,31 @@
+lex(InStream, Tokens):-
+	readWord(InStream, Token),
+	readList(Token, Tokens, InStream).
+
+readList(Token,[Token|Tokens],InStream):-
+	readWord(InStream,Token),
+	readList(nextToken,Tokens,InStream).
+
+readWord(InStream, W):-
+	get_code(InStream,thisChar),
+	checkCharAndReadRest(thisChar,Chars,InStream),
+	atom_codes(W,Chars).
+
+checkCharAndReadRest(10,[],_):- !.
+checkCharAndReadRest(32,[],_):- !.
+checkCharAndReadRest(-1,[],_):- !.
+checkCharAndReadRest(40,[40],_):- !.
+
+checkCharAndReadRest(34,[34|Chars],InStream):-
+	get_code(InStream,nextChar),
+	quotationMode(nextChar,Chars,InStream).
+
+checkCharAndReadRest(thisChar,[thisChar|Chars],InStream):-
+	get_code(InStream, nextChar),
+	checkCharAndReadRest(nextChar,Chars,InStream).
+
+
+
 program --> block, [$].
 
 block --> [{],  statementList, [}].
