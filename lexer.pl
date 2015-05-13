@@ -46,12 +46,18 @@ checkCharAndReadRest(99,[99],_):- !.
 checkCharAndReadRest(100,[100],_):- !.
 checkCharAndReadRest(101,[101],_):- !.
 
-checkCharAndReadRest(102,[102|Chars],InStream):- . %false
+checkCharAndReadRest(102,[102|Chars],InStream):- 
+	get_code(InStream,nextChar),
+	checkFalseOne(nextChar,Chars,InStream).
+checkCharAndReadRest(102,[102],_):- !.
 
 checkCharAndReadRest(103,[103],_):- !.
 checkCharAndReadRest(104,[104],_):- !.
 
-checkCharAndReadRest(105,[105|Chars],InStream):- . %int + if
+checkCharAndReadRest(105,[105|Chars],InStream):- 
+	getCode(InStream,nextChar),
+	checkIOne(nextChar,Chars,InStream).
+checkCharAndReadRest(105,[105],_):- !.
 
 checkCharAndReadRest(106,[106],_):- !.
 checkCharAndReadRest(107,[107],_):- !.
@@ -112,7 +118,39 @@ checkBooleanSix(110,[110],InStream):- !.
 
 checkBooleanSix(_,[],_):- fail.
 
+checkFalseOne(97,[97|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkFalseTwo(nextChar,Chars,InStream).
+	
+checkFalseOne(_,[],_):- fail.
 
+checkFalseTwo(108,[108|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkFalseThree(nextChar,Chars,InStream).
+	
+checkFalseTwo(_,[],_):- fail.
+
+checkFalseThree(115,[115|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkFalseFour(nextChar,Chars,InStream).
+	
+checkFalseThree(_,[],_):- fail.
+
+checkFalseFour(101,[101],_):- !.
+
+checkFalseFour(_,[],_):- fail.
+
+checkIOne(102,[102],_):- !.
+
+checkIOne(110,[110|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkITwo(nextChar,Chars,InStream).
+	
+checkIOne(_,[],_):- fail.
+
+checkITwo(116,[116],_):- !.
+
+checkITwo(_,[],_):- fail.
 
 checkCharAndReadRest(34,[34|Chars],InStream):-
 	get_code(InStream,nextChar),
