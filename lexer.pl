@@ -66,12 +66,18 @@ checkCharAndReadRest(109,[109],_):- !.
 checkCharAndReadRest(110,[110],_):- !.
 checkCharAndReadRest(111,[111],_):- !.
 
-checkCharAndReadRest(112,[112|Chars],InStream):- . %print
+checkCharAndReadRest(112,[112|Chars],InStream):- 
+	getCode(InStream,nextChar),
+	checkPrintOne(nextChar,Chars,InStream).
+checkCharAndReadRest(112,[112],_):- !.
 
 checkCharAndReadRest(113,[113],_):- !.
 checkCharAndReadRest(114,[114],_):- !.
 
-checkCharAndReadRest(115,[115|Chars],InStream):- . %string
+checkCharAndReadRest(115,[115|Chars],InStream):- 
+	getCode(InStream,nextChar),
+	checkStringOne(nextChar,Chars,InStream).
+checkCharAndReadRest(115,[115],_):- !.
 
 checkCharAndReadRest(116,[116|Chars],InStream):- . %true
 
@@ -151,6 +157,56 @@ checkIOne(_,[],_):- fail.
 checkITwo(116,[116],_):- !.
 
 checkITwo(_,[],_):- fail.
+
+checkPrintOne(114,[114|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkPrintTwo(nextChar,Chars,InStream).
+
+checkPrintOne(_,[],_):- fail.
+
+checkPrintTwo(105,[105|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkPrintThree(nextChar,Chars,InStream).
+
+checkPrintTwo(_,[],_):- fail.
+
+checkPrintThree(110,[110|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkPrintFour(nextChar,Chars,InStream).
+
+checkPrintThree(_,[],_):- fail.
+
+checkPrintFour(116,[116],_):- !.
+
+checkPrintFour(_,[],_):- fail.
+
+checkStringOne(116,[116|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkStringTwo(nextChar,Chars,InStream).
+
+checkStringOne(_,[],_):- fail.
+
+checkStringTwo(114,[114|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkStringThree(nextChar,Chars,InStream).
+	
+checkStringTwo(_,[],_):- fail.
+
+checkStringThree(105,[105|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkStringFour(nextChar,Chars,InStream).
+	
+checkStringThree(_,[],_):- fail.
+
+checkStringFour(110,[110|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkStringFive(nextChar,Chars,InStream).
+
+checkStringFour(_,[],_):- fail.
+
+checkStringFive(103,[103],_):- !.
+
+checkStringFive(_,[],_):- fail.
 
 checkCharAndReadRest(34,[34|Chars],InStream):-
 	get_code(InStream,nextChar),
