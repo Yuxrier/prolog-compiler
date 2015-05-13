@@ -55,7 +55,7 @@ checkCharAndReadRest(103,[103],_):- !.
 checkCharAndReadRest(104,[104],_):- !.
 
 checkCharAndReadRest(105,[105|Chars],InStream):- 
-	getCode(InStream,nextChar),
+	get_code(InStream,nextChar),
 	checkIOne(nextChar,Chars,InStream).
 checkCharAndReadRest(105,[105],_):- !.
 
@@ -67,7 +67,7 @@ checkCharAndReadRest(110,[110],_):- !.
 checkCharAndReadRest(111,[111],_):- !.
 
 checkCharAndReadRest(112,[112|Chars],InStream):- 
-	getCode(InStream,nextChar),
+	get_code(InStream,nextChar),
 	checkPrintOne(nextChar,Chars,InStream).
 checkCharAndReadRest(112,[112],_):- !.
 
@@ -75,16 +75,23 @@ checkCharAndReadRest(113,[113],_):- !.
 checkCharAndReadRest(114,[114],_):- !.
 
 checkCharAndReadRest(115,[115|Chars],InStream):- 
-	getCode(InStream,nextChar),
+	get_code(InStream,nextChar),
 	checkStringOne(nextChar,Chars,InStream).
 checkCharAndReadRest(115,[115],_):- !.
 
-checkCharAndReadRest(116,[116|Chars],InStream):- . %true
+checkCharAndReadRest(116,[116|Chars],InStream):- 
+	get_code(InStream,nextChar),
+	checkTrueOne(nextChar,Chars,InStream).
+checkCharAndReadRest(116,[116],_):- !.
+	
 
 checkCharAndReadRest(117,[117],_):- !.
 checkCharAndReadRest(118,[118],_):- !.
 
-checkCharAndReadRest(119,[119|Chars],InStream):- . %while
+checkCharAndReadRest(119,[119|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkWhileOne(nextChar,Chars,InStream).
+checkCharAndReadRest(119,[119],_):- !.
 
 checkCharAndReadRest(120,[120],_):- !.
 checkCharAndReadRest(121,[121],_):- !.
@@ -207,6 +214,42 @@ checkStringFour(_,[],_):- fail.
 checkStringFive(103,[103],_):- !.
 
 checkStringFive(_,[],_):- fail.
+
+checkTrueOne(114,[114|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkTrueTwo(nextChar,Chars,InStream).
+
+checkTrueOne(_,[],_):- fail.
+
+checkTrueTwo(117,[117|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkTrueThree(nextChar,Chars,InStream).
+
+checkTrueTwo(_,[],_):- fail.
+
+checkTrueThree(101,[101],_):- !.
+
+checkTrueThree(_,[],_):- fail.
+
+checkWhileOne(104,[104|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkWhileTwo(nextChar,Chars,InStream).
+	
+checkWhileOne(_,[],_):- fail.
+
+checkWhileTwo(105,[105|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkWhileThree(nextChar,Chars,InStream).
+
+checkWhileTwo(_,[],__):- fail.
+
+checkWhileThree(108,[108|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkWhileFour(nextChar,Chars,InStream).
+
+checkWhileFour(101,[101],_):- !.
+
+checkWhileFour(_,[],_):- fail.
 
 checkCharAndReadRest(34,[34|Chars],InStream):-
 	get_code(InStream,nextChar),
