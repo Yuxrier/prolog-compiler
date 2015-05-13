@@ -35,6 +35,20 @@ checkCharAndReadRest(55,[55],_):- !.
 checkCharAndReadRest(56,[56],_):- !.
 checkCharAndReadRest(57,[57],_):- !.
 
+checkCharAndReadRest(43,[43],_):- !.
+
+checkCharAndReadRest(61,[61|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkBoolOp(nextChar,Chars,InStream).
+
+checkCharAndReadRest(33,[33|Chars],InStream):-
+	get_code(InStream,nextChar),
+	checkBoolOp(nextChar,Chars,InStream).
+
+checkBoolOp(61,[61],_):- !.
+
+checkBoolOp(_,[],_):- fail.
+
 checkCharAndReadRest(97,[97],_):- !.
 
 checkCharAndReadRest(98,[98|Chars],InStream):- 
@@ -252,6 +266,12 @@ checkWhileFour(101,[101],_):- !.
 checkWhileFour(_,[],_):- fail.
 
 checkCharAndReadRest(34,[34|Chars],InStream):-
+	get_code(InStream,nextChar),
+	quotationMode(nextChar,Chars,InStream).
+
+quotationMode(34,[34],_):- !.
+
+quotationMode(_,[_|Chars],InStream):-
 	get_code(InStream,nextChar),
 	quotationMode(nextChar,Chars,InStream).
 
