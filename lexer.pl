@@ -13,9 +13,7 @@ readList(Token,[Token|Tokens],InStream):-
 
 readWord(InStream, W):-
 	get_code(InStream,thisChar),
-	checkCharAndReadRest
-
-(thisChar,Chars,InStream),
+	checkCharAndReadRest(thisChar,Chars,InStream),
 	atom_codes(W,Chars).
 
 checkCharAndReadRest(10,[],_):- !.
@@ -59,18 +57,14 @@ checkCharAndReadRest(97,[97],_):- !.
 
 checkCharAndReadRest(98,[98|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkBooleanOne
-
-(nextChar,Chars,InStream).	
+	checkBooleanOne(nextChar,Chars,InStream).	
 checkCharAndReadRest(98,[98],_):- !.
 
 checkCharAndReadRest(99,[99],_):- !.
 checkCharAndReadRest(100,[100],_):- !.
 checkCharAndReadRest(101,[101],_):- !.
 
-checkCharAndReadRest(102,[102|
-
-Chars],InStream):- 
+checkCharAndReadRest(102,[102|Chars],InStream):- 
 	get_code(InStream,nextChar),
 	checkFalseOne(nextChar,Chars,InStream).
 checkCharAndReadRest(102,[102],_):- !.
@@ -78,9 +72,7 @@ checkCharAndReadRest(102,[102],_):- !.
 checkCharAndReadRest(103,[103],_):- !.
 checkCharAndReadRest(104,[104],_):- !.
 
-checkCharAndReadRest(105,[105|
-
-Chars],InStream):- 
+checkCharAndReadRest(105,[105|Chars],InStream):- 
 	get_code(InStream,nextChar),
 	checkIOne(nextChar,Chars,InStream).
 checkCharAndReadRest(105,[105],_):- !.
@@ -92,9 +84,7 @@ checkCharAndReadRest(109,[109],_):- !.
 checkCharAndReadRest(110,[110],_):- !.
 checkCharAndReadRest(111,[111],_):- !.
 
-checkCharAndReadRest(112,[112|
-
-Chars],InStream):- 
+checkCharAndReadRest(112,[112|Chars],InStream):- 
 	get_code(InStream,nextChar),
 	checkPrintOne(nextChar,Chars,InStream).
 checkCharAndReadRest(112,[112],_):- !.
@@ -102,18 +92,12 @@ checkCharAndReadRest(112,[112],_):- !.
 checkCharAndReadRest(113,[113],_):- !.
 checkCharAndReadRest(114,[114],_):- !.
 
-checkCharAndReadRest(115,[115|
-
-Chars],InStream):- 
+checkCharAndReadRest(115,[115|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkStringOne
-
-(nextChar,Chars,InStream).
+	checkStringOne(nextChar,Chars,InStream).
 checkCharAndReadRest(115,[115],_):- !.
 
-checkCharAndReadRest(116,[116|
-
-Chars],InStream):- 
+checkCharAndReadRest(116,[116|Chars],InStream):- 
 	get_code(InStream,nextChar),
 	checkTrueOne(nextChar,Chars,InStream).
 checkCharAndReadRest(116,[116],_):- !.
@@ -122,9 +106,7 @@ checkCharAndReadRest(116,[116],_):- !.
 checkCharAndReadRest(117,[117],_):- !.
 checkCharAndReadRest(118,[118],_):- !.
 
-checkCharAndReadRest(119,[119|
-
-Chars],InStream):-
+checkCharAndReadRest(119,[119|Chars],InStream):-
 	get_code(InStream,nextChar),
 	checkWhileOne(nextChar,Chars,InStream).
 checkCharAndReadRest(119,[119],_):- !.
@@ -135,41 +117,31 @@ checkCharAndReadRest(122,[122],_):- !.
 
 checkBooleanOne(111,[111|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkBooleanTwo
-
-(nextChar,Chars,InStream).
+	checkBooleanTwo(nextChar,Chars,InStream).
 
 checkBooleanOne(_,[],_):- fail.
 
 checkBooleanTwo(111,[111|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkBooleanThree
-
-(nextChar,Chars,InStream).
+	checkBooleanThree(nextChar,Chars,InStream).
 
 checkBooleanTwo(_,[],_):- fail.
 
 checkBooleanThree(108,[108|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkBooleanFour
-
-(nextChar,Chars,InStream).
+	checkBooleanFour(nextChar,Chars,InStream).
 
 checkBooleanThree(_,[],_):- fail.
 
 checkBooleanFour(101,[101|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkBooleanFive
-
-(nextChar,Chars,InStream).
+	checkBooleanFive(nextChar,Chars,InStream).
 
 checkBooleanFour(_,[],_):- fail.
 
 checkBooleanFive(97,[97|Chars],InStream):- 
 	get_code(InStream,nextChar),
-	checkBooleanSix
-
-(nextChar,Chars,InStream).
+	checkBooleanSix(nextChar,Chars,InStream).
 
 checkBooleanFive(_,[],_):- fail.
 
@@ -185,17 +157,13 @@ checkFalseOne(_,[],_):- fail.
 
 checkFalseTwo(108,[108|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkFalseThree
-
-(nextChar,Chars,InStream).
+	checkFalseThree(nextChar,Chars,InStream).
 	
 checkFalseTwo(_,[],_):- fail.
 
 checkFalseThree(115,[115|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkFalseFour
-
-(nextChar,Chars,InStream).
+	checkFalseFour(nextChar,Chars,InStream).
 	
 checkFalseThree(_,[],_):- fail.
 
@@ -223,17 +191,13 @@ checkPrintOne(_,[],_):- fail.
 
 checkPrintTwo(105,[105|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkPrintThree
-
-(nextChar,Chars,InStream).
+	checkPrintThree(nextChar,Chars,InStream).
 
 checkPrintTwo(_,[],_):- fail.
 
 checkPrintThree(110,[110|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkPrintFour
-
-(nextChar,Chars,InStream).
+	checkPrintFour(nextChar,Chars,InStream).
 
 checkPrintThree(_,[],_):- fail.
 
@@ -243,33 +207,25 @@ checkPrintFour(_,[],_):- fail.
 
 checkStringOne(116,[116|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkStringTwo
-
-(nextChar,Chars,InStream).
+	checkStringTwo(nextChar,Chars,InStream).
 
 checkStringOne(_,[],_):- fail.
 
 checkStringTwo(114,[114|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkStringThree
-
-(nextChar,Chars,InStream).
+	checkStringThree(nextChar,Chars,InStream).
 	
 checkStringTwo(_,[],_):- fail.
 
 checkStringThree(105,[105|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkStringFour
-
-(nextChar,Chars,InStream).
+	checkStringFour(nextChar,Chars,InStream).
 	
 checkStringThree(_,[],_):- fail.
 
 checkStringFour(110,[110|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkStringFive
-
-(nextChar,Chars,InStream).
+	checkStringFive(nextChar,Chars,InStream).
 
 checkStringFour(_,[],_):- fail.
 
@@ -285,9 +241,7 @@ checkTrueOne(_,[],_):- fail.
 
 checkTrueTwo(117,[117|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkTrueThree
-
-(nextChar,Chars,InStream).
+	checkTrueThree(nextChar,Chars,InStream).
 
 checkTrueTwo(_,[],_):- fail.
 
@@ -303,17 +257,13 @@ checkWhileOne(_,[],_):- fail.
 
 checkWhileTwo(105,[105|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkWhileThree
-
-(nextChar,Chars,InStream).
+	checkWhileThree(nextChar,Chars,InStream).
 
 checkWhileTwo(_,[],__):- fail.
 
 checkWhileThree(108,[108|Chars],InStream):-
 	get_code(InStream,nextChar),
-	checkWhileFour
-
-(nextChar,Chars,InStream).
+	checkWhileFour(nextChar,Chars,InStream).
 
 checkWhileFour(101,[101],_):- !.
 
@@ -329,13 +279,9 @@ quotationMode(_,[_|Chars],InStream):-
 	get_code(InStream,nextChar),
 	quotationMode(nextChar,Chars,InStream).
 
-checkCharAndReadRest(thisChar,[thisChar|
-
-Chars],InStream):-
+checkCharAndReadRest(thisChar,[thisChar|Chars],InStream):-
 	get_code(InStream, nextChar),
-	checkCharAndReadRest
-
-(nextChar,Chars,InStream).
+	checkCharAndReadRest(nextChar,Chars,InStream).
 
 
 
@@ -373,9 +319,7 @@ intExpr --> digit.
 
 stringExpr --> ["], charList, ["].
 
-booleanExpr --> ['('], expr, boolop, expr, 
-
-[')'].
+booleanExpr --> ['('], expr, boolop, expr, [')'].
 booleanExpr --> boolval.
 
 id --> char.
