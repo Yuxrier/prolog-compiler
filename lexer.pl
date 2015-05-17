@@ -390,7 +390,7 @@ program(program(BLOCK, $)) --> block(BLOCK), [$].
 block(block('{', STATEMENTLIST, '}')) --> ['{'],  statementList(STATEMENTLIST), ['}'].
 
 statementList(statementList(STATEMENT, STATEMENTLIST)) --> statement(STATEMENT), statementList(STATEMENTLIST).
-statementList(statementList()) --> []. %Might be wrong
+statementList(statementList([])) --> []. %Might be wrong
 
 statement(statement(PRINTSTATEMENT)) --> printStatement(PRINTSTATEMENT).
 statement(statement(ASSIGNMENTSTATEMENT)) --> assignmentStatement(ASSIGNMENTSTATEMENT).
@@ -426,7 +426,7 @@ id(id(CHAR)) --> char(CHAR).
 
 charList(charList(CHAR, CHARLIST)) --> char(CHAR), charList(CHARLIST).
 charList(charList(SPACE, CHARLIST)) --> space(SPACE), charList(CHARLIST).
-charList(charlist()) --> []. %could also be wrong
+charList(charlist([])) --> []. %could also be wrong
 
 type(type(int)) --> [int].
 type(type(string)) --> [string].
