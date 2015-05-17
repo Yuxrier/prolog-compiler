@@ -7,8 +7,10 @@ lexMain(InStream, Tokens):-
 	readWord(InStream, Token),
 	readList(Token, Tokens, InStream).
 
+readList('',[],_):- !.
+
 readList(Token,[Token|Tokens],InStream):-
-	readWord(InStream,Token),
+	readWord(InStream,NextToken),
 	readList(NextToken,Tokens,InStream).
 
 readWord(InStream, W):-
