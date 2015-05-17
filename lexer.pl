@@ -1,3 +1,7 @@
+lexAndParse(Filename):-
+	lex(Filename, X), !,
+	program(X, Y).
+
 lex(Filename, X):-
 	open(Filename,read,Str),
 	lexMain(Str,X),
@@ -7,7 +11,11 @@ lexMain(InStream, Tokens):-
 	readWord(InStream, Token),
 	readList(Token, Tokens, InStream).
 
-readList('',[],_):- !.
+readList($,[$],_):- !.
+
+readList('',Tokens,InStream):-
+	readWord(InStream,NextToken),
+	readList(NextToken,Tokens,InStream).
 
 readList(Token,[Token|Tokens],InStream):-
 	readWord(InStream,NextToken),
@@ -21,6 +29,7 @@ readWord(InStream, W):-
 checkCharAndReadRest(10,[],_):- !.
 checkCharAndReadRest(32,[],_):- !.
 checkCharAndReadRest(-1,[],_):- !.
+checkCharAndReadRest(end_of_file,[],_):- !.
 
 checkCharAndReadRest(40,[40],_):- !.
 checkCharAndReadRest(41,[41],_):- !.
@@ -281,12 +290,6 @@ quotationMode(_,[_|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
-checkCharAndReadRest(ThisChar,[ThisChar|Chars],InStream):-
-	get_code(InStream, NextChar),
-	checkCharAndReadRest(NextChar,Chars,InStream).
-
-
-
 program --> block, [$].
 
 block --> ['{'],  statementList, ['}'].
@@ -361,7 +364,7 @@ char --> [x].
 char --> [y].
 char --> [z].
 
-space --> [ ].
+space --> [''].
 
 digit --> [1].
 digit --> [2].
