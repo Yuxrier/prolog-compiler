@@ -1,6 +1,6 @@
 lexAndParse(Filename):-
 	lex(Filename, X), !,
-	program(X, Y).
+	programNT(X, Y).
 
 lex(Filename, X):-
 	open(Filename,read,Str),
@@ -290,97 +290,192 @@ quotationMode(_,[_|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
-program --> block, [$].
+programNT --> blockNT, [$].
 
-block --> ['{'],  statementList, ['}'].
+blockNT --> ['{'],  statementListNT, ['}'].
 
-statementList --> statement, statementList.
-statementList --> [].
+statementListNT --> statementNT, statementListNT.
+statementListNT --> [].
 
-statement --> printStatement.
-statement --> assignmentStatement.
-statement --> varDecl.
-statement --> whileStatement.
-statement --> ifStatement.
-statement --> block.
+statementNT --> printStatementNT.
+statementNT --> assignmentStatementNT.
+statementNT --> varDeclNT.
+statementNT --> whileStatementNT.
+statementNT --> ifStatementNT.
+statementNT --> blockNT.
 
-printStatement --> [print], ['('], expr, [')'].
+printStatementNT --> [print], ['('], exprNT, [')'].
 
-assignmentStatement --> id, [=], expr.
+assignmentStatementNT --> idNT, ['='], exprNT.
 
-varDecl --> type, id.
+varDeclNT --> typeNT, idNT.
 
-whileStatement --> [while], booleanExpr, block.
+whileStatementNT --> [while], booleanExprNT, blockNT.
 
-ifStatement --> [if], booleanExpr, block.
+ifStatementNT --> [if], booleanExprNT, blockNT.
 
-expr --> intExpr.
-expr --> stringExpr.
-expr --> booleanExpr.
-expr --> id.
+exprNT --> intExprNT.
+exprNT --> stringExprNT.
+exprNT --> booleanExprNT.
+exprNT --> idNT.
 
-intExpr --> digit, intop, expr.
-intExpr --> digit.
+intExprNT --> digitNT, intopNT, exprNT.
+intExprNT --> digitNT.
 
-stringExpr --> ["], charList, ["].
+stringExprNT --> ['"'], charListNT, ['"'].
 
-booleanExpr --> ['('], expr, boolop, expr, [')'].
-booleanExpr --> boolval.
+booleanExprNT --> ['('], exprNT, boolopNT, exprNT, [')'].
+booleanExprNT --> boolvalNT.
 
-id --> char.
+idNT --> charNT.
 
-charList --> char, charList.
-charList --> space, charList.
-charList --> [].
+charListNT --> charNT, charListNT.
+charListNT --> spaceNT, charListNT.
+charListNT --> [].
 
-type --> [int].
-type --> [string].
-type --> [boolean].
+typeNT --> [int].
+typeNT --> [string].
+typeNT --> [boolean].
 
-char --> [a].
-char --> [b].
-char --> [c].
-char --> [d].
-char --> [e].
-char --> [f].
-char --> [g].
-char --> [h].
-char --> [i].
-char --> [j].
-char --> [k].
-char --> [l].
-char --> [m].
-char --> [n].
-char --> [o].
-char --> [p].
-char --> [q].
-char --> [r].
-char --> [s].
-char --> [t].
-char --> [u].
-char --> [v].
-char --> [w].
-char --> [x].
-char --> [y].
-char --> [z].
+charNT --> [a].
+charNT --> [b].
+charNT --> [c].
+charNT --> [d].
+charNT --> [e].
+charNT --> [f].
+charNT --> [g].
+charNT --> [h].
+charNT --> [i].
+charNT --> [j].
+charNT --> [k].
+charNT --> [l].
+charNT --> [m].
+charNT --> [n].
+charNT --> [o].
+charNT --> [p].
+charNT --> [q].
+charNT --> [r].
+charNT --> [s].
+charNT --> [t].
+charNT --> [u].
+charNT --> [v].
+charNT --> [w].
+charNT --> [x].
+charNT --> [y].
+charNT --> [z].
 
-space --> [''].
+spaceNT --> [' '].
 
-digit --> [1].
-digit --> [2].
-digit --> [3].
-digit --> [4].
-digit --> [5].
-digit --> [6].
-digit --> [7].
-digit --> [8].
-digit --> [9].
-digit --> [0].
+digitNT --> [1].
+digitNT --> [2].
+digitNT --> [3].
+digitNT --> [4].
+digitNT --> [5].
+digitNT --> [6].
+digitNT --> [7].
+digitNT --> [8].
+digitNT --> [9].
+digitNT --> [0].
 
-boolop --> ['=='].
-boolop --> ['!='].
+boolopNT --> ['=='].
+boolopNT --> ['!='].
 
-boolval --> [false].
-boolval --> [true].
+boolvalNT --> [false].
+boolvalNT --> [true].
 
-intop --> [+].
+intopNT --> ['+'].
+
+program(program(BLOCK, $)) --> block(BLOCK), [$].
+
+block(block('{', STATEMENTLIST, '}')) --> ['{'],  statementList(STATEMENTLIST), ['}'].
+
+statementList(statementList(STATEMENT, STATEMENTLIST)) --> statement(STATEMENT), statementList(STATEMENTLIST).
+statementList(statementList()) --> []. %Might be wrong
+
+statement(statement(PRINTSTATEMENT)) --> printStatement(PRINTSTATEMENT).
+statement(statement(ASSIGNMENTSTATEMENT)) --> assignmentStatement(ASSIGNMENTSTATEMENT).
+statement(statement(VARDECL)) --> varDecl(VARDECL).
+statement(statement(WHILESTATEMENT)) --> whileStatement(WHILESTATEMENT).
+statement(statement(IFSTATEMENT)) --> ifStatement(IFSTATEMENT).
+statement(statement(BLOCK)) --> block(BLOCK).
+
+printStatement(printStatement(print, '(', EXPR, ')')) --> [print], ['('], expr(EXPR), [')'].
+
+assignmentStatement(assignmentStatement(ID, '=', EXPR)) --> id(ID), ['='], expr(EXPR).
+
+varDecl(varDecl(TYPE, ID)) --> type(TYPE), id(ID).
+
+whileStatement(whileStatement(while, BOOLEANEXPR, BLOCK)) --> [while], booleanExpr(BOOLEANEXPR), block(BLOCK).
+
+ifStatement(ifStatement(if, BOOLEANEXPR, BLOCK)) --> [if], booleanExpr(BOOLEANEXPR), block(BLOCK).
+
+expr(expr(INTEXPR)) --> intExpr(INTEXPR).
+expr(expr(STRINGEXPR)) --> stringExpr(STRINGEXPR).
+expr(expr(BOOLEANEXPR)) --> booleanExpr(BOOLEANEXPR).
+expr(expr(ID)) --> id(ID).
+
+intExpr(intExpr(DIGIT, INTOP, EXPR)) --> digit(DIGIT), intop(INTOP), expr(EXPR).
+intExpr(intExpr(DIGIT)) --> digit(DIGIT).
+
+stringExpr(stringExpr('"', CHARLIST, '"')) --> ['"'], charList(CHARLIST), ['"'].
+
+booleanExpr(booleanExpr('(', EXPR, BOOLOP, EXPRPRIME, ')')) --> ['('], expr(EXPR), boolop(BOOLOP), expr(EXPRPRIME), [')'].
+booleanExpr(booleanExpr(BOOLVAL)) --> boolval(BOOLVAL).
+
+id(id(CHAR)) --> char(CHAR).
+
+charList(charList(CHAR, CHARLIST)) --> char(CHAR), charList(CHARLIST).
+charList(charList(SPACE, CHARLIST)) --> space(SPACE), charList(CHARLIST).
+charList(charlist()) --> []. %could also be wrong
+
+type(type(int)) --> [int].
+type(type(string)) --> [string].
+type(type(boolean)) --> [boolean].
+
+char(char(a)) --> [a].
+char(char(b)) --> [b].
+char(char(c)) --> [c].
+char(char(d)) --> [d].
+char(char(e)) --> [e].
+char(char(f)) --> [f].
+char(char(g)) --> [g].
+char(char(h)) --> [h].
+char(char(i)) --> [i].
+char(char(j)) --> [j].
+char(char(k)) --> [k].
+char(char(l)) --> [l].
+char(char(m)) --> [m].
+char(char(n)) --> [n].
+char(char(o)) --> [o].
+char(char(p)) --> [p].
+char(char(q)) --> [q].
+char(char(r)) --> [r].
+char(char(s)) --> [s].
+char(char(t)) --> [t].
+char(char(u)) --> [u].
+char(char(v)) --> [v].
+char(char(w)) --> [w].
+char(char(x)) --> [x].
+char(char(y)) --> [y].
+char(char(z)) --> [z].
+
+space(space(' ')) --> [' '].
+
+digit(digit(1)) --> [1].
+digit(digit(2)) --> [2].
+digit(digit(3)) --> [3].
+digit(digit(4)) --> [4].
+digit(digit(5)) --> [5].
+digit(digit(6)) --> [6].
+digit(digit(7)) --> [7].
+digit(digit(8)) --> [8].
+digit(digit(9)) --> [9].
+digit(digit(0)) --> [0].
+
+boolop(boolop('==')) --> ['=='].
+boolop(boolop('!=')) --> ['!='].
+
+boolval(boolval(false)) --> [false].
+boolval(boolval(true)) --> [true].
+
+intop(intop('+')) --> ['+'].
