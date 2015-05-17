@@ -1,5 +1,5 @@
-lex(filename, X):-
-	open(filename,read,Str),
+lex(Filename, X):-
+	open(Filename,read,Str),
 	lexMain(Str,X),
 	close(Str).
 
@@ -9,7 +9,7 @@ lexMain(InStream, Tokens):-
 
 readList(Token,[Token|Tokens],InStream):-
 	readWord(InStream,Token),
-	readList(nextToken,Tokens,InStream).
+	readList(NextToken,Tokens,InStream).
 
 readWord(InStream, W):-
 	get_code(InStream,ThisChar),
