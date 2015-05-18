@@ -1,6 +1,12 @@
 lexAndParse(Filename):-
 	lex(Filename, X), !,
-	programNT(X, Y).
+	programNT(X, Y), !,
+	program(CST, X, []), !,
+	programAST(AST, X, []),
+	write('CST - '),
+	writeln(CST),
+	write('AST - '),
+	writeln(AST).
 
 lex(Filename, X):-
 	open(Filename,read,Str),
@@ -479,3 +485,98 @@ boolval(boolval(false)) --> [false].
 boolval(boolval(true)) --> [true].
 
 intop(intop('+')) --> ['+'].
+
+programAST((BLOCK, $)) --> blockAST(BLOCK), [$].
+
+blockAST(('{', STATEMENTLIST, '}')) --> ['{'],  statementListAST(STATEMENTLIST), ['}'].
+
+statementListAST((STATEMENT, STATEMENTLIST)) --> statementAST(STATEMENT), statementListAST(STATEMENTLIST).
+statementListAST(([])) --> []. %Might be wrong
+
+statementAST((PRINTSTATEMENT)) --> printStatementAST(PRINTSTATEMENT).
+statementAST((ASSIGNMENTSTATEMENT)) --> assignmentStatementAST(ASSIGNMENTSTATEMENT).
+statementAST((VARDECL)) --> varDeclAST(VARDECL).
+statementAST((WHILESTATEMENT)) --> whileStatementAST(WHILESTATEMENT).
+statementAST((IFSTATEMENT)) --> ifStatementAST(IFSTATEMENT).
+statementAST((BLOCK)) --> blockAST(BLOCK).
+
+printStatementAST((print, '(', EXPR, ')')) --> [print], ['('], exprAST(EXPR), [')'].
+
+assignmentStatementAST((ID, '=', EXPR)) --> idAST(ID), ['='], exprAST(EXPR).
+
+varDeclAST((TYPE, ID)) --> typeAST(TYPE), idAST(ID).
+
+whileStatementAST((while, BOOLEANEXPR, BLOCK)) --> [while], booleanExprAST(BOOLEANEXPR), blockAST(BLOCK).
+
+ifStatementAST((if, BOOLEANEXPR, BLOCK)) --> [if], booleanExprAST(BOOLEANEXPR), blockAST(BLOCK).
+
+exprAST((INTEXPR)) --> intExprAST(INTEXPR).
+exprAST((STRINGEXPR)) --> stringExprAST(STRINGEXPR).
+exprAST((BOOLEANEXPR)) --> booleanExprAST(BOOLEANEXPR).
+exprAST((ID)) --> idAST(ID).
+
+intExprAST((DIGIT, INTOP, EXPR)) --> digitAST(DIGIT), intopAST(INTOP), exprAST(EXPR).
+intExprAST((DIGIT)) --> digitAST(DIGIT).
+
+stringExprAST(('"', CHARLIST, '"')) --> ['"'], charListAST(CHARLIST), ['"'].
+
+booleanExprAST(('(', EXPR, BOOLOP, EXPRPRIME, ')')) --> ['('], exprAST(EXPR), boolopAST(BOOLOP), exprAST(EXPRPRIME), [')'].
+booleanExprAST((BOOLVAL)) --> boolvalAST(BOOLVAL).
+
+idAST((CHAR)) --> charAST(CHAR).
+
+charListAST((CHAR, CHARLIST)) --> charAST(CHAR), charListAST(CHARLIST).
+charListAST((SPACE, CHARLIST)) --> spaceAST(SPACE), charListAST(CHARLIST).
+charListAST(([])) --> []. %could also be wrong
+
+typeAST((int)) --> [int].
+typeAST((string)) --> [string].
+typeAST((boolean)) --> [boolean].
+
+charAST((a)) --> [a].
+charAST((b)) --> [b].
+charAST((c)) --> [c].
+charAST((d)) --> [d].
+charAST((e)) --> [e].
+charAST((f)) --> [f].
+charAST((g)) --> [g].
+charAST((h)) --> [h].
+charAST((i)) --> [i].
+charAST((j)) --> [j].
+charAST((k)) --> [k].
+charAST((l)) --> [l].
+charAST((m)) --> [m].
+charAST((n)) --> [n].
+charAST((o)) --> [o].
+charAST((p)) --> [p].
+charAST((q)) --> [q].
+charAST((r)) --> [r].
+charAST((s)) --> [s].
+charAST((t)) --> [t].
+charAST((u)) --> [u].
+charAST((v)) --> [v].
+charAST((w)) --> [w].
+charAST((x)) --> [x].
+charAST((y)) --> [y].
+charAST((z)) --> [z].
+
+spaceAST((' ')) --> [' '].
+
+digitAST((1)) --> [1].
+digitAST((2)) --> [2].
+digitAST((3)) --> [3].
+digitAST((4)) --> [4].
+digitAST((5)) --> [5].
+digitAST((6)) --> [6].
+digitAST((7)) --> [7].
+digitAST((8)) --> [8].
+digitAST((9)) --> [9].
+digitAST((0)) --> [0].
+
+boolopAST(('==')) --> ['=='].
+boolopAST(('!=')) --> ['!='].
+
+boolvalAST((false)) --> [false].
+boolvalAST((true)) --> [true].
+
+intopAST(('+')) --> ['+'].
