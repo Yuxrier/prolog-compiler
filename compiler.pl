@@ -3,6 +3,7 @@
 :- dynamic child/2.
 :- dynamic symbolTable/3.
 :- dynamic temp/2.
+:- dynamic generatedCode/1.
 
 lexAndParse(Filename):-
 	lex(Filename, X), !,
@@ -15,7 +16,25 @@ lexAndParse(Filename):-
 	writeln(AST), !,
 	assert(currentScope(0)),
 	assert(scope(0)),
+	assert(generatedCode("")),
 	programST(X, []), !.
+
+generateCode(Filename):-
+	lex(Filename, X), !,
+	programNT(X, []), !,
+	program(CST, X, []), !,
+	programAST(AST, X, []), !,
+	write('CST - '),
+	writeln(CST),
+	write('AST - '),
+	writeln(AST), !,
+	assert(currentScope(0)),
+	assert(scope(0)),
+	assert(generatedCode([])),
+	programST(X, []), !,
+	programCG(X, []), !,
+	write('Code- '),generatedCode(Y), atom_codes(Z, Y),
+	writeln(Z).
 
 lex(Filename, X):-
 	open(Filename,read,Str),
@@ -694,3 +713,98 @@ boolvalAST((false)) --> [false].
 boolvalAST((true)) --> [true].
 
 intopAST(('+')) --> ['+'].
+
+programCG --> blockCG, [$].
+
+blockCG --> ['{'],  statementListCG, ['}'].
+
+statementListCG --> statementCG, statementListCG.
+statementListCG --> [].
+
+statementCG --> printStatementCG.
+statementCG --> assignmentStatementCG.
+statementCG --> varDeclCG.
+statementCG --> whileStatementCG.
+statementCG --> ifStatementCG.
+statementCG --> blockCG.
+
+printStatementCG --> [print], ['('], exprCG, [')'].
+
+assignmentStatementCG --> idCG, ['='], exprCG, {generatedCode(X), string_concat(X,"A9008D42",Y), asserta(generatedCode(Y))}.
+
+varDeclCG --> typeCG, idCG, {generatedCode(X), append(X,"A9008D42",Y), asserta(generatedCode(Y))}.
+
+whileStatementCG --> [while], booleanExprCG, blockCG.
+
+ifStatementCG --> [if], booleanExprCG, blockCG.
+
+exprCG --> intExprCG.
+exprCG --> stringExprCG.
+exprCG --> booleanExprCG.
+exprCG --> idCG.
+
+intExprCG --> digitCG, intopCG, exprCG.
+intExprCG --> digitCG.
+
+stringExprCG --> ['"'], charListCG, ['"'].
+
+booleanExprCG --> ['('], exprCG, boolopCG, exprCG, [')'].
+booleanExprCG --> boolvalCG.
+
+idCG --> charCG.
+
+charListCG --> charCG, charListCG.
+charListCG --> spaceCG, charListCG.
+charListCG --> [].
+
+typeCG --> [int].
+typeCG --> [string].
+typeCG --> [boolean].
+
+charCG --> [a].
+charCG --> [b].
+charCG --> [c].
+charCG --> [d].
+charCG --> [e].
+charCG --> [f].
+charCG --> [g].
+charCG --> [h].
+charCG --> [i].
+charCG --> [j].
+charCG --> [k].
+charCG --> [l].
+charCG --> [m].
+charCG --> [n].
+charCG --> [o].
+charCG --> [p].
+charCG --> [q].
+charCG --> [r].
+charCG --> [s].
+charCG --> [t].
+charCG --> [u].
+charCG --> [v].
+charCG --> [w].
+charCG --> [x].
+charCG --> [y].
+charCG --> [z].
+
+spaceCG --> [' '].
+
+digitCG --> [1].
+digitCG --> [2].
+digitCG --> [3].
+digitCG --> [4].
+digitCG --> [5].
+digitCG --> [6].
+digitCG --> [7].
+digitCG --> [8].
+digitCG --> [9].
+digitCG --> [0].
+
+boolopCG --> ['=='].
+boolopCG --> ['!='].
+
+boolvalCG --> [false].
+boolvalCG --> [true].
+
+intopCG --> ['+'].
