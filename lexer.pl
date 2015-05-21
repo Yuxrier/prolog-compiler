@@ -1,12 +1,21 @@
+:- dynamic scope/1.
+:- dynamic currentScope/1.
+:- dynamic child/2.
+:- dynamic symbolTable/3.
+:- dynamic temp/2.
+
 lexAndParse(Filename):-
 	lex(Filename, X), !,
-	programNT(X, Y), !,
+	programNT(X, []), !,
 	program(CST, X, []), !,
-	programAST(AST, X, []),
+	programAST(AST, X, []), !,
 	write('CST - '),
 	writeln(CST),
 	write('AST - '),
-	writeln(AST).
+	writeln(AST), !,
+	assert(currentScope(0)),
+	assert(scope(0)),
+	programST(X, []), !.
 
 lex(Filename, X):-
 	open(Filename,read,Str),
@@ -390,6 +399,103 @@ boolvalNT --> [false].
 boolvalNT --> [true].
 
 intopNT --> ['+'].
+
+programST --> blockST, [$].
+
+blockST --> ['{'], {scope(X), Y is X + 1, asserta(scope(Y)), asserta(currentScope(Y))}, statementListST, closeBlockST.
+
+closeBlockST --> ['}'], {retract(currentScope(X)), currentScope(Y), assert(child(Y,X))}.
+
+statementListST --> statementST, statementListST.
+statementListST --> [].
+
+statementST --> printStatementST.
+statementST --> assignmentStatementST.
+statementST --> varDeclST.
+statementST --> whileStatementST.
+statementST --> ifStatementST.
+statementST --> blockST.
+
+printStatementST --> [print], ['('], exprST, [')'].
+
+assignmentStatementST --> idST, ['='], exprST.
+
+varDeclST --> typeST, idST, {scope(X), retract(temp(0,Y)), retract(temp(1,Z)), asserta(symbolTable(X,Y,Z))}.
+
+whileStatementST --> [while], booleanExprST, blockST.
+
+ifStatementST --> [if], booleanExprST, blockST.
+
+exprST --> intExprST.
+exprST --> stringExprST.
+exprST --> booleanExprST.
+exprST --> idST.
+
+intExprST --> digitST, intopST, exprST.
+intExprST --> digitST.
+
+stringExprST --> ['"'], charListST, ['"'].
+
+booleanExprST --> ['('], exprST, boolopST, exprST, [')'].
+booleanExprST --> boolvalST.
+
+idST --> charST.
+
+charListST --> charST, {retract(temp(_,_))}, charListST.
+charListST --> spaceST, charListST.
+charListST --> [].
+
+typeST --> [int], {asserta(temp(1,int))}.
+typeST --> [string], {asserta(temp(1,string))}.
+typeST --> [boolean], {asserta(temp(1,boolean))}.
+
+charST --> [a], {asserta(temp(0,a))}.
+charST --> [b], {asserta(temp(0,b))}.
+charST --> [c], {asserta(temp(0,c))}.
+charST --> [d], {asserta(temp(0,d))}.
+charST --> [e], {asserta(temp(0,e))}.
+charST --> [f], {asserta(temp(0,f))}.
+charST --> [g], {asserta(temp(0,g))}.
+charST --> [h], {asserta(temp(0,h))}.
+charST --> [i], {asserta(temp(0,i))}.
+charST --> [j], {asserta(temp(0,j))}.
+charST --> [k], {asserta(temp(0,k))}.
+charST --> [l], {asserta(temp(0,l))}.
+charST --> [m], {asserta(temp(0,m))}.
+charST --> [n], {asserta(temp(0,n))}.
+charST --> [o], {asserta(temp(0,o))}.
+charST --> [p], {asserta(temp(0,p))}.
+charST --> [q], {asserta(temp(0,q))}.
+charST --> [r], {asserta(temp(0,r))}.
+charST --> [s], {asserta(temp(0,s))}.
+charST --> [t], {asserta(temp(0,t))}.
+charST --> [u], {asserta(temp(0,u))}.
+charST --> [v], {asserta(temp(0,v))}.
+charST --> [w], {asserta(temp(0,w))}.
+charST --> [x], {asserta(temp(0,x))}.
+charST --> [y], {asserta(temp(0,y))}.
+charST --> [z], {asserta(temp(0,z))}.
+
+spaceST --> [' '].
+
+digitST --> [1].
+digitST --> [2].
+digitST --> [3].
+digitST --> [4].
+digitST --> [5].
+digitST --> [6].
+digitST --> [7].
+digitST --> [8].
+digitST --> [9].
+digitST --> [0].
+
+boolopST --> ['=='].
+boolopST --> ['!='].
+
+boolvalST --> [false].
+boolvalST --> [true].
+
+intopST --> ['+'].
 
 program(program(BLOCK, $)) --> block(BLOCK), [$].
 
