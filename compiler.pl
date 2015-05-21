@@ -400,6 +400,14 @@ boolvalNT --> [true].
 
 intopNT --> ['+'].
 
+scopeCheck(0,_,_):- fail.
+scopeCheck(X,Y,Z):- symbolTable(X,Y,S), !, S == Z.
+scopeCheck(X,Y,Z):- child(S,X), scopeCheck(S,Y,Z).
+
+scopeNoType(0,_):- fail.
+scopeNoType(X,Y):- symbolTable(X,Y,_), !.
+scopeNoType(X,Y):- child(S,X), scopeNoType(S,Y).
+
 programST --> blockST, [$].
 
 blockST --> ['{'], {scope(X), Y is X + 1, asserta(scope(Y)), asserta(currentScope(Y))}, statementListST, closeBlockST.
@@ -418,7 +426,7 @@ statementST --> blockST.
 
 printStatementST --> [print], ['('], exprST, [')'].
 
-assignmentStatementST --> idST, ['='], exprST.
+assignmentStatementST --> idST, {temp(0,X), asserta(temp(2,X)), retract(temp(0,_)), retract(temp(1,_))}, ['='], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
 
 varDeclST --> typeST, idST, {scope(X), retract(temp(0,Y)), retract(temp(1,Z)), asserta(symbolTable(X,Y,Z))}.
 
@@ -426,17 +434,17 @@ whileStatementST --> [while], booleanExprST, blockST.
 
 ifStatementST --> [if], booleanExprST, blockST.
 
-exprST --> intExprST.
-exprST --> stringExprST.
-exprST --> booleanExprST.
-exprST --> idST.
+exprST --> intExprST, {retract(temp(1,_)), asserta(temp(1,'int'))}.
+exprST --> stringExprST, {retract(temp(1,_)), asserta(temp(1,'string'))}.
+exprST --> booleanExprST, {retract(temp(1,_)), asserta(temp(1,'boolean'))}.
+exprST --> idST, {currentScope(X), temp(0,Y), scopeNoType(X,Y)}.
 
 intExprST --> digitST, intopST, exprST.
 intExprST --> digitST.
 
 stringExprST --> ['"'], charListST, ['"'].
 
-booleanExprST --> ['('], exprST, boolopST, exprST, [')'].
+booleanExprST --> ['('], exprST, {temp(1,X), asserta(temp(3,X))}, boolopST, exprST, {temp(3,X), temp(1,Y), X == Y}, [')'].
 booleanExprST --> boolvalST.
 
 idST --> charST.
@@ -445,9 +453,9 @@ charListST --> charST, {retract(temp(_,_))}, charListST.
 charListST --> spaceST, charListST.
 charListST --> [].
 
-typeST --> [int], {asserta(temp(1,int))}.
-typeST --> [string], {asserta(temp(1,string))}.
-typeST --> [boolean], {asserta(temp(1,boolean))}.
+typeST --> [int], {asserta(temp(1,'int'))}.
+typeST --> [string], {asserta(temp(1,'string'))}.
+typeST --> [boolean], {asserta(temp(1,'boolean'))}.
 
 charST --> [a], {asserta(temp(0,a))}.
 charST --> [b], {asserta(temp(0,b))}.
