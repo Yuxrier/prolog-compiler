@@ -6,6 +6,7 @@ CST
 AST
 Symbol Table
 Semantic Analysis
+Really Basic Code Generation
 
 Problems: 
 The compiler currently skips a character after reading in certain letters and not reading in the keywords that those letters start. As such, while testing my grammar, please avoid using b, f, t, p, w, i, or s as identifiers.
@@ -17,4 +18,10 @@ Once you have started running compiler.pl, you can query it. Your best option is
 
 ?-lexAndParse(<filename>).
 
-and don't forget the period, it is important. This function shows off the CST and AST, and will return true if the program is valid (in all ways except for the byte limit in code generation, as code generation hasn't been implemented yet), and will only return false if the code fails one of the checks. Eventually my compiler will give more helpful error messages, but I still have yet to learn how to do that with ProLog.
+and don't forget the period, it is important. This function shows off the CST and AST, and will return true if the program is valid (in all ways except for the byte limit in code generation, as code generation hasn't been fully implemented yet), and will only return false if the code fails one of the checks. Eventually my compiler will give more helpful error messages, but I still have yet to learn how to do that with ProLog.
+
+If you wish to check my code generation, use the command
+
+?-generateCode(<filename>).
+
+it does everything that lexAndParse do, but generates some really bad code.
