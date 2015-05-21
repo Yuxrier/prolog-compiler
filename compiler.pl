@@ -96,7 +96,7 @@ checkCharAndReadRest(33,[33|Chars],InStream):-
 
 checkBoolOp(61,[61],_):- !.
 
-checkBoolOp(_,[],_):- fail.
+checkBoolOp(_,[],_):- !.
 
 checkCharAndReadRest(97,[97],_):- !.
 
@@ -340,7 +340,7 @@ statementNT --> blockNT.
 
 printStatementNT --> [print], ['('], exprNT, [')'].
 
-assignmentStatementNT --> idNT, ['='], exprNT.
+assignmentStatementNT --> idNT, [=], exprNT.
 
 varDeclNT --> typeNT, idNT.
 
@@ -400,16 +400,16 @@ charNT --> [z].
 
 spaceNT --> [' '].
 
-digitNT --> [1].
-digitNT --> [2].
-digitNT --> [3].
-digitNT --> [4].
-digitNT --> [5].
-digitNT --> [6].
-digitNT --> [7].
-digitNT --> [8].
-digitNT --> [9].
-digitNT --> [0].
+digitNT --> ['1'].
+digitNT --> ['2'].
+digitNT --> ['3'].
+digitNT --> ['4'].
+digitNT --> ['5'].
+digitNT --> ['6'].
+digitNT --> ['7'].
+digitNT --> ['8'].
+digitNT --> ['9'].
+digitNT --> ['0'].
 
 boolopNT --> ['=='].
 boolopNT --> ['!='].
@@ -445,7 +445,7 @@ statementST --> blockST.
 
 printStatementST --> [print], ['('], exprST, [')'].
 
-assignmentStatementST --> idST, {temp(0,X), asserta(temp(2,X)), retract(temp(0,_)), retract(temp(1,_))}, ['='], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
+assignmentStatementST --> idST, {temp(0,X), asserta(temp(2,X)), retract(temp(0,_)), retract(temp(1,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
 
 varDeclST --> typeST, idST, {scope(X), retract(temp(0,Y)), retract(temp(1,Z)), asserta(symbolTable(X,Y,Z))}.
 
@@ -505,16 +505,16 @@ charST --> [z], {asserta(temp(0,z))}.
 
 spaceST --> [' '].
 
-digitST --> [1].
-digitST --> [2].
-digitST --> [3].
-digitST --> [4].
-digitST --> [5].
-digitST --> [6].
-digitST --> [7].
-digitST --> [8].
-digitST --> [9].
-digitST --> [0].
+digitST --> ['1'].
+digitST --> ['2'].
+digitST --> ['3'].
+digitST --> ['4'].
+digitST --> ['5'].
+digitST --> ['6'].
+digitST --> ['7'].
+digitST --> ['8'].
+digitST --> ['9'].
+digitST --> ['0'].
 
 boolopST --> ['=='].
 boolopST --> ['!='].
@@ -540,7 +540,7 @@ statement(statement(BLOCK)) --> block(BLOCK).
 
 printStatement(printStatement(print, '(', EXPR, ')')) --> [print], ['('], expr(EXPR), [')'].
 
-assignmentStatement(assignmentStatement(ID, '=', EXPR)) --> id(ID), ['='], expr(EXPR).
+assignmentStatement(assignmentStatement(ID, =, EXPR)) --> id(ID), [=], expr(EXPR).
 
 varDecl(varDecl(TYPE, ID)) --> type(TYPE), id(ID).
 
@@ -600,16 +600,16 @@ char(char(z)) --> [z].
 
 space(space(' ')) --> [' '].
 
-digit(digit(1)) --> [1].
-digit(digit(2)) --> [2].
-digit(digit(3)) --> [3].
-digit(digit(4)) --> [4].
-digit(digit(5)) --> [5].
-digit(digit(6)) --> [6].
-digit(digit(7)) --> [7].
-digit(digit(8)) --> [8].
-digit(digit(9)) --> [9].
-digit(digit(0)) --> [0].
+digit(digit(1)) --> ['1'].
+digit(digit(2)) --> ['2'].
+digit(digit(3)) --> ['3'].
+digit(digit(4)) --> ['4'].
+digit(digit(5)) --> ['5'].
+digit(digit(6)) --> ['6'].
+digit(digit(7)) --> ['7'].
+digit(digit(8)) --> ['8'].
+digit(digit(9)) --> ['9'].
+digit(digit(0)) --> ['0'].
 
 boolop(boolop('==')) --> ['=='].
 boolop(boolop('!=')) --> ['!='].
@@ -635,7 +635,7 @@ statementAST((BLOCK)) --> blockAST(BLOCK).
 
 printStatementAST((print, '(', EXPR, ')')) --> [print], ['('], exprAST(EXPR), [')'].
 
-assignmentStatementAST((ID, '=', EXPR)) --> idAST(ID), ['='], exprAST(EXPR).
+assignmentStatementAST((ID, =, EXPR)) --> idAST(ID), [=], exprAST(EXPR).
 
 varDeclAST((TYPE, ID)) --> typeAST(TYPE), idAST(ID).
 
@@ -695,16 +695,16 @@ charAST((z)) --> [z].
 
 spaceAST((' ')) --> [' '].
 
-digitAST((1)) --> [1].
-digitAST((2)) --> [2].
-digitAST((3)) --> [3].
-digitAST((4)) --> [4].
-digitAST((5)) --> [5].
-digitAST((6)) --> [6].
-digitAST((7)) --> [7].
-digitAST((8)) --> [8].
-digitAST((9)) --> [9].
-digitAST((0)) --> [0].
+digitAST((1)) --> ['1'].
+digitAST((2)) --> ['2'].
+digitAST((3)) --> ['3'].
+digitAST((4)) --> ['4'].
+digitAST((5)) --> ['5'].
+digitAST((6)) --> ['6'].
+digitAST((7)) --> ['7'].
+digitAST((8)) --> ['8'].
+digitAST((9)) --> ['9'].
+digitAST((0)) --> ['0'].
 
 boolopAST(('==')) --> ['=='].
 boolopAST(('!=')) --> ['!='].
@@ -730,7 +730,7 @@ statementCG --> blockCG.
 
 printStatementCG --> [print], ['('], exprCG, [')'].
 
-assignmentStatementCG --> idCG, ['='], exprCG, {generatedCode(X), string_concat(X,"A9008D42",Y), asserta(generatedCode(Y))}.
+assignmentStatementCG --> idCG, [=], exprCG, {generatedCode(X), string_concat(X,"A9008D42",Y), asserta(generatedCode(Y))}.
 
 varDeclCG --> typeCG, idCG, {generatedCode(X), append(X,"A9008D42",Y), asserta(generatedCode(Y))}.
 
@@ -790,16 +790,16 @@ charCG --> [z].
 
 spaceCG --> [' '].
 
-digitCG --> [1].
-digitCG --> [2].
-digitCG --> [3].
-digitCG --> [4].
-digitCG --> [5].
-digitCG --> [6].
-digitCG --> [7].
-digitCG --> [8].
-digitCG --> [9].
-digitCG --> [0].
+digitCG --> ['1'].
+digitCG --> ['2'].
+digitCG --> ['3'].
+digitCG --> ['4'].
+digitCG --> ['5'].
+digitCG --> ['6'].
+digitCG --> ['7'].
+digitCG --> ['8'].
+digitCG --> ['9'].
+digitCG --> ['0'].
 
 boolopCG --> ['=='].
 boolopCG --> ['!='].
