@@ -7,9 +7,12 @@
 
 lexAndParse(Filename):-
 	lex(Filename, X), !,
+	write('Lex succeeded - '),
+	writeln(X),
 	programNT(X, []), !,
 	program(CST, X, []), !,
 	programAST(AST, X, []), !,
+	writeln('Parse succeeded,'),
 	write('CST - '),
 	writeln(CST),
 	write('AST - '),
@@ -50,6 +53,13 @@ readList($,[$],_):- !.
 readList('',Tokens,InStream):-
 	readWord(InStream,NextToken),
 	readList(NextToken,Tokens,InStream).
+
+readList(TestQuote,Tokens,InStream):-
+	sub_string(TestQuote,0,1, _, '"'),
+	string_chars(TestQuote,Quote),
+	readWord(InStream,NextToken),
+	readList(NextToken,NextTokens,InStream),
+	append(Quote,NextTokens,Tokens).
 
 readList(Token,[Token|Tokens],InStream):-
 	readWord(InStream,NextToken),
@@ -147,7 +157,6 @@ checkCharAndReadRest(116,[116|Chars],InStream):-
 	checkTrueOne(NextChar,Chars,InStream).
 checkCharAndReadRest(116,[116],_):- !.
 	
-
 checkCharAndReadRest(117,[117],_):- !.
 checkCharAndReadRest(118,[118],_):- !.
 
@@ -320,7 +329,7 @@ checkCharAndReadRest(34,[34|Chars],InStream):-
 
 quotationMode(34,[34],_):- !.
 
-quotationMode(_,[_|Chars],InStream):-
+quotationMode(X,[X|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
