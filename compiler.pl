@@ -335,15 +335,27 @@ checkCharAndReadRest(34,[34|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
+checkCharAndReadRest(X,[],_):-
+	write('Invalid token- '),
+	writeln(X), !, fail.
+
 quotationMode(34,[34],_):- !.
 
 quotationMode(X,[X|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
+errorHandling --> {write('Error- ')},errorHandlingHelper.
+
+errorHandlingHelper --> [].
+errorHandlingHelper --> [_], errorHandlingHelper.
+
 programNT --> blockNT, [$].
 
 blockNT --> ['{'],  statementListNT, ['}'].
+blockNT --> errorHandling, blockNT, {writeln('characters appear before starting {')}.
+blockNT --> errorHandling, ['}'], {writeln('missing expected token {')}.
+blockNT --> ['{'], statementListNT, errorHandling, {writeln('missing expected token }')}
 
 statementListNT --> statementNT, statementListNT.
 statementListNT --> [].
@@ -356,27 +368,41 @@ statementNT --> ifStatementNT.
 statementNT --> blockNT.
 
 printStatementNT --> [print], ['('], exprNT, [')'].
+printStatementNT --> [print], errorHandling, ['('], exprNT, [')'], {writeln('characters exist between print and (')}.
+printStatementNT --> [print], errorHandling, [')'], {writeln('missing expected token ( in printStatement')}.
+printStatementNT --> [print], ['('], exprNT, errorHandling, {writeln('missing expected token )')}.
 
 assignmentStatementNT --> idNT, [=], exprNT.
+assignmentStatementNT --> idNT, errorHandling, {writeln('missing expected token =')}.
 
 varDeclNT --> typeNT, idNT.
+varDeclNT --> typeNT, errorHandling, {writeln('missing expected identifier')}.
 
 whileStatementNT --> [while], booleanExprNT, blockNT.
+whileStatementNT --> [while], errorHandling, blockNT, {writeln('missing booleanExpr')}.
 
 ifStatementNT --> [if], booleanExprNT, blockNT.
+ifStatementNT --> [if], errorHandling, blockNT, {writeln('missing booleanExpr')}.
 
 exprNT --> intExprNT.
 exprNT --> stringExprNT.
 exprNT --> booleanExprNT.
 exprNT --> idNT.
+exprNT --> errorHandling, {writeln('invalid expr type')}.
 
 intExprNT --> digitNT, intopNT, exprNT.
 intExprNT --> digitNT.
+intExprNT --> digitNT, errorHandling, {writeln('invalid int op')}.
 
 stringExprNT --> ['"'], charListNT, ['"'].
+stringExprNT --> ['"'], errorHandling, ['"'], {writeln('invalid character in string')}.
+stringExprNT --> ['"'], errorHandling, {writeln('missing expected token "')}.
+
 
 booleanExprNT --> ['('], exprNT, boolopNT, exprNT, [')'].
 booleanExprNT --> boolvalNT.
+booleanExprNT --> ['('], exprNT, errorHandling, exprNT, [')'], {writeln('missing expected bool op')}.
+booleanExprNT --> ['('], exprNT, boolopNT, exprNT, errorHandling, {writeln('missing expected token )')}.
 
 idNT --> charNT.
 
