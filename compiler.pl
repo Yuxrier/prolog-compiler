@@ -48,7 +48,9 @@ lexMain(InStream, Tokens):-
 	readWord(InStream, Token),
 	readList(Token, Tokens, InStream).
 
-readList($,[$],_):- !.
+readList($,[$],InStream):- 
+	peek_code(InStream,TestChar),
+	afterProgramCodeChecker(TestChar), !.
 
 readList('',Tokens,InStream):-
 	readWord(InStream,NextToken),
@@ -65,6 +67,10 @@ readList(Token,[Token|Tokens],InStream):-
 	readWord(InStream,NextToken),
 	readList(NextToken,Tokens,InStream).
 
+afterProgramCodeChecker(-1):- !.
+afterProgramCodeChecker(end_of_file):- !.
+afterProgramCodeChecker(_):- writeln('Warning- code exists after program ends.'), !.
+
 readWord(InStream, W):-
 	get_code(InStream,ThisChar),
 	checkCharAndReadRest(ThisChar,Chars,InStream),
@@ -72,8 +78,8 @@ readWord(InStream, W):-
 
 checkCharAndReadRest(10,[],_):- !.
 checkCharAndReadRest(32,[],_):- !.
-checkCharAndReadRest(-1,[],_):- !.
-checkCharAndReadRest(end_of_file,[],_):- !.
+checkCharAndReadRest(-1,[$],_):- writeln('Warning- no $ included'), !.
+checkCharAndReadRest(end_of_file,[$],_):- writeln('Warning- no $ included'), !.
 
 checkCharAndReadRest(40,[40],_):- !.
 checkCharAndReadRest(41,[41],_):- !.
