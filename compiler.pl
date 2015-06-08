@@ -101,10 +101,10 @@ checkCharAndReadRest(61,[61|Chars],InStream):-
 	checkBoolOp(NextChar,Chars,InStream).
 
 checkCharAndReadRest(33,[33|Chars],InStream):-
-	get_code(InStream,NextChar),
+	peek_code(InStream,NextChar),
 	checkBoolOp(NextChar,Chars,InStream).
 
-checkBoolOp(61,[61],_):- !.
+checkBoolOp(61,[61],InStream):- get_code(InStream,_), !.
 
 checkBoolOp(_,[],_):- !.
 
@@ -227,7 +227,7 @@ checkFalseFour(101,[101],_):- !.
 
 checkFalseFour(_,[],_):- fail.
 
-checkIOne(102,[102],_):- 	
+checkIOne(102,[102],InStream):- 	
 	get_code(InStream,_),!.
 
 checkIOne(110,[110|Chars],InStream):-
@@ -345,7 +345,7 @@ quotationMode(X,[X|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
-errorHandling --> {write('Error- ')},errorHandlingHelper.
+errorHandling --> errorHandlingHelper.
 
 errorHandlingHelper --> [].
 errorHandlingHelper --> [_], errorHandlingHelper.
@@ -353,9 +353,7 @@ errorHandlingHelper --> [_], errorHandlingHelper.
 programNT --> blockNT, [$].
 
 blockNT --> ['{'],  statementListNT, ['}'].
-blockNT --> errorHandling, blockNT, {writeln('characters appear before starting {')}.
-blockNT --> errorHandling, ['}'], {writeln('missing expected token {')}.
-blockNT --> ['{'], statementListNT, errorHandling, {writeln('missing expected token }')}
+blockNT --> ['{'], statementListNT, errorHandling, {writeln('missing expected token }')}.
 
 statementListNT --> statementNT, statementListNT.
 statementListNT --> [].
