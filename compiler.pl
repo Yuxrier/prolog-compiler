@@ -16,11 +16,11 @@ lexAndParse(Filename):-
 	write('CST - '),
 	writeln(CST),
 	write('AST - '),
-	writeln(AST), !,
-	assert(currentScope(0)),
-	assert(scope(0)),
-	assert(generatedCode("")),
-	programST(X, []), !.
+	writeln(AST), !.
+%	assert(currentScope(0)),
+%	assert(scope(0)),
+%	assert(generatedCode("")),
+%	programST(X, []), !.
 
 generateCode(Filename):-
 	lex(Filename, X), !,
