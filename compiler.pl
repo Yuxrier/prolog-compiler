@@ -468,11 +468,13 @@ boolvalNT --> [true].
 
 intopNT --> ['+'].
 
-scopeCheck(0,_,_):- writeln('scope or type error'), abort.
+scopeCheck(0,_,_):- currentScope(X), scope(Y), write('scope or type error in scope- '), writeln(X),
+	write('last created scope- '), writeln(Y), abort.
 scopeCheck(X,Y,Z):- symbolTable(X,Y,S), !, S == Z.
 scopeCheck(X,Y,Z):- child(S,X), scopeCheck(S,Y,Z).
 
-scopeNoType(0,_,_):- writeln('scope error'), abort.
+scopeNoType(0,_,_):- currentScope(X), scope(Y), write('scope error in scope- '), writeln(X),
+	write('last created scope- '), writeln(Y), abort.
 scopeNoType(X,Y,Z):- symbolTable(X,Y,Z), !.
 scopeNoType(X,Y,Z):- child(S,X), scopeNoType(S,Y,Z).
 
@@ -513,6 +515,8 @@ intExprST --> digitST.
 stringExprST --> ['"'], charListST, ['"'].
 
 booleanExprST --> ['('], exprST, {temp(1,X), asserta(temp(3,X))}, boolopST, exprST, {temp(3,X), temp(1,Y), X == Y}, [')'].
+booleanExprST --> ['('], {currentScope(X), scope(Y), write('type mismatch in boolean expression in scope- '), writeln(X),
+	write('last created scope- '), writeln(Y), abort}.
 booleanExprST --> boolvalST.
 
 idST --> charST.
