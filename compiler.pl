@@ -16,11 +16,13 @@ lexAndParse(Filename):-
 	write('CST - '),
 	writeln(CST),
 	write('AST - '),
-	writeln(AST), !.
-%	assert(currentScope(0)),
-%	assert(scope(0)),
-%	assert(generatedCode("")),
-%	programST(X, []), !.
+	writeln(AST), !,
+	assert(currentScope(0)),
+	assert(scope(0)),
+	assert(generatedCode("")),
+	programST(X, []), !,
+	writeln('Semantic Analysis succeeded,'),
+	listing(symbolTable/3).
 
 generateCode(Filename):-
 	lex(Filename, X), !,
@@ -466,19 +468,19 @@ boolvalNT --> [true].
 
 intopNT --> ['+'].
 
-scopeCheck(0,_,_):- fail.
+scopeCheck(0,_,_):- writeln('scope or type error'), abort.
 scopeCheck(X,Y,Z):- symbolTable(X,Y,S), !, S == Z.
 scopeCheck(X,Y,Z):- child(S,X), scopeCheck(S,Y,Z).
 
-scopeNoType(0,_):- fail.
-scopeNoType(X,Y):- symbolTable(X,Y,_), !.
-scopeNoType(X,Y):- child(S,X), scopeNoType(S,Y).
+scopeNoType(0,_,_):- writeln('scope error'), abort.
+scopeNoType(X,Y,Z):- symbolTable(X,Y,Z), !.
+scopeNoType(X,Y,Z):- child(S,X), scopeNoType(S,Y,Z).
 
 programST --> blockST, [$].
 
-blockST --> ['{'], {scope(X), Y is X + 1, asserta(scope(Y)), asserta(currentScope(Y))}, statementListST, closeBlockST.
+blockST --> ['{'], {scope(X), Y is X + 1, currentScope(Z), assert(child(Z,Y)), asserta(scope(Y)), asserta(currentScope(Y))}, statementListST, closeBlockST.
 
-closeBlockST --> ['}'], {retract(currentScope(X)), currentScope(Y), assert(child(Y,X))}.
+closeBlockST --> ['}'], {retract(currentScope(X)), currentScope(Y)}.
 
 statementListST --> statementST, statementListST.
 statementListST --> [].
@@ -492,18 +494,18 @@ statementST --> blockST.
 
 printStatementST --> [print], ['('], exprST, [')'].
 
-assignmentStatementST --> idST, {temp(0,X), asserta(temp(2,X)), retract(temp(0,_)), retract(temp(1,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
+assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
 
-varDeclST --> typeST, idST, {scope(X), retract(temp(0,Y)), retract(temp(1,Z)), asserta(symbolTable(X,Y,Z))}.
+varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)), asserta(symbolTable(X,Y,Z))}.
 
 whileStatementST --> [while], booleanExprST, blockST.
 
 ifStatementST --> [if], booleanExprST, blockST.
 
-exprST --> intExprST, {retract(temp(1,_)), asserta(temp(1,'int'))}.
-exprST --> stringExprST, {retract(temp(1,_)), asserta(temp(1,'string'))}.
-exprST --> booleanExprST, {retract(temp(1,_)), asserta(temp(1,'boolean'))}.
-exprST --> idST, {currentScope(X), temp(0,Y), scopeNoType(X,Y)}.
+exprST --> intExprST, {asserta(temp(1,'int'))}.
+exprST --> stringExprST, {asserta(temp(1,'string'))}.
+exprST --> booleanExprST, {asserta(temp(1,'boolean'))}.
+exprST --> idST, {currentScope(X), temp(0,Y), scopeNoType(X,Y,Z), asserta(temp(1,Z))}.
 
 intExprST --> digitST, intopST, exprST.
 intExprST --> digitST.
