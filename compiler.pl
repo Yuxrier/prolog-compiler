@@ -478,6 +478,10 @@ scopeNoType(0,_,_):- currentScope(X), scope(Y), write('scope error in scope- '),
 scopeNoType(X,Y,Z):- symbolTable(X,Y,Z), !.
 scopeNoType(X,Y,Z):- child(S,X), scopeNoType(S,Y,Z).
 
+redeclareCheck(X,Y):- \+ symbolTable(X,Y,_).
+redeclareCheck(_,_):-  currentScope(X), scope(Y), write('redeclared identifier in scope- '), writeln(X),
+	write('last created scope- '), writeln(Y), abort.
+
 programST --> blockST, [$].
 
 blockST --> ['{'], {scope(X), Y is X + 1, currentScope(Z), assert(child(Z,Y)), asserta(scope(Y)), asserta(currentScope(Y))}, statementListST, closeBlockST.
@@ -498,7 +502,7 @@ printStatementST --> [print], ['('], exprST, [')'].
 
 assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
 
-varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)), asserta(symbolTable(X,Y,Z))}.
+varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)),redeclareCheck(X,Y), asserta(symbolTable(X,Y,Z))}.
 
 whileStatementST --> [while], booleanExprST, blockST.
 
