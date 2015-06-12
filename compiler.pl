@@ -1,7 +1,7 @@
 :- dynamic scope/1.
 :- dynamic currentScope/1.
 :- dynamic child/2.
-:- dynamic symbolTable/3.
+:- dynamic symbolTable/5.
 :- dynamic temp/2.
 :- dynamic generatedCode/1.
 
@@ -22,7 +22,9 @@ lexAndParse(Filename):-
 	assert(generatedCode("")),
 	programST(X, []), !,
 	writeln('Semantic Analysis succeeded,'),
-	listing(symbolTable/3).
+	listing(symbolTable/5),
+	initializeCheck,
+	useCheck.
 
 generateCode(Filename):-
 	lex(Filename, X), !,
@@ -80,6 +82,7 @@ readWord(InStream, W):-
 
 checkCharAndReadRest(10,[],_):- !.
 checkCharAndReadRest(32,[],_):- !.
+checkCharAndReadRest(9,[],_):- !.
 checkCharAndReadRest(-1,[$],_):- writeln('Warning- no $ included'), !.
 checkCharAndReadRest(end_of_file,[$],_):- writeln('Warning- no $ included'), !.
 
@@ -111,10 +114,6 @@ checkCharAndReadRest(61,[61|Chars],InStream):-
 checkCharAndReadRest(33,[33|Chars],InStream):-
 	peek_code(InStream,NextChar),
 	checkBoolOp(NextChar,Chars,InStream).
-
-checkBoolOp(61,[61],InStream):- get_code(InStream,_), !.
-
-checkBoolOp(_,[],_):- !.
 
 checkCharAndReadRest(97,[97],_):- !.
 
@@ -177,6 +176,18 @@ checkCharAndReadRest(120,[120],_):- !.
 checkCharAndReadRest(121,[121],_):- !.
 checkCharAndReadRest(122,[122],_):- !.
 
+checkCharAndReadRest(34,[34|Chars],InStream):-
+	get_code(InStream,NextChar),
+	quotationMode(NextChar,Chars,InStream).
+
+checkCharAndReadRest(X,[],_):-
+	write('Invalid token- '),
+	writeln(X), !, fail.
+
+checkBoolOp(61,[61],InStream):- get_code(InStream,_), !.
+
+checkBoolOp(_,[],_):- !.
+
 checkBooleanOne(111,[111|Chars],InStream):- 
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -208,7 +219,7 @@ checkBooleanFive(97,[97|Chars],InStream):-
 
 checkBooleanFive(_,[],_):- fail.
 
-checkBooleanSix(110,[110],InStream):- !.
+checkBooleanSix(110,[110],_):- !.
 
 checkBooleanSix(_,[],_):- fail.
 
@@ -339,14 +350,6 @@ checkWhileFour(101,[101],_):- !.
 
 checkWhileFour(_,[],_):- fail.
 
-checkCharAndReadRest(34,[34|Chars],InStream):-
-	get_code(InStream,NextChar),
-	quotationMode(NextChar,Chars,InStream).
-
-checkCharAndReadRest(X,[],_):-
-	write('Invalid token- '),
-	writeln(X), !, fail.
-
 quotationMode(34,[34],_):- !.
 
 quotationMode(X,[X|Chars],InStream):-
@@ -470,23 +473,41 @@ intopNT --> ['+'].
 
 scopeCheck(0,_,_):- currentScope(X), scope(Y), write('scope or type error in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
-scopeCheck(X,Y,Z):- symbolTable(X,Y,S), !, S == Z.
+scopeCheck(X,Y,Z):- symbolTable(X,Y,S,_,_), !, S == Z.
 scopeCheck(X,Y,Z):- child(S,X), scopeCheck(S,Y,Z).
 
 scopeNoType(0,_,_):- currentScope(X), scope(Y), write('scope error in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
-scopeNoType(X,Y,Z):- symbolTable(X,Y,Z), !.
+scopeNoType(X,Y,Z):- symbolTable(X,Y,Z,_,_), !.
 scopeNoType(X,Y,Z):- child(S,X), scopeNoType(S,Y,Z).
 
-redeclareCheck(X,Y):- \+ symbolTable(X,Y,_).
-redeclareCheck(_,_):-  currentScope(X), scope(Y), write('redeclared identifier in scope- '), writeln(X),
+redeclareCheck(X,Y):- \+ symbolTable(X,Y,_,_,_).
+redeclareCheck(_,_):-  currentScope(X), scope(Y), write('redeclared identifier or integer type mismatch in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
+
+initialize(0,_,_):- !.
+initialize(X,Y,Z):-retract(symbolTable(X,Y,Z,0,U)), asserta(symbolTable(X,Y,Z,1,U)),!.
+initialize(X,Y,Z):-child(S,X), initialize(S,Y,Z).
+
+use(0,_,_):- !.
+use(X,Y,Z):-retract(symbolTable(X,Y,Z,I,0)), asserta(symbolTable(X,Y,Z,I,1)),!.
+use(X,Y,Z):-child(S,X), use(S,Y,Z).
+
+initializeCheck:- \+ symbolTable(_,_,_,0,_).
+initializeCheck:- symbolTable(X,Y,Z,0,_), write('Warning- uninitialized variable exists in scope '),
+	write(X), write(' with identifier '), write(Y),
+	write(' and type '), writeln(Z).
+
+useCheck:- \+ symbolTable(_,_,_,_,0).
+useCheck:- symbolTable(X,Y,Z,_,0), write('Warning- unused variable exists in scope '), write(X),
+	write(' with identifier '), write(Y),
+	write(' and type '), writeln(Z).
 
 programST --> blockST, [$].
 
 blockST --> ['{'], {scope(X), Y is X + 1, currentScope(Z), assert(child(Z,Y)), asserta(scope(Y)), asserta(currentScope(Y))}, statementListST, closeBlockST.
 
-closeBlockST --> ['}'], {retract(currentScope(X)), currentScope(Y)}.
+closeBlockST --> ['}'], {retract(currentScope(_))}.
 
 statementListST --> statementST, statementListST.
 statementListST --> [].
@@ -500,9 +521,9 @@ statementST --> blockST.
 
 printStatementST --> [print], ['('], exprST, [')'].
 
-assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), retract(temp(_,_)) }.
+assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), initialize(X,Y,Z), retract(temp(_,_)) }.
 
-varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)),redeclareCheck(X,Y), asserta(symbolTable(X,Y,Z))}.
+varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)),redeclareCheck(X,Y), asserta(symbolTable(X,Y,Z,0,0))}.
 
 whileStatementST --> [while], booleanExprST, blockST.
 
@@ -511,9 +532,11 @@ ifStatementST --> [if], booleanExprST, blockST.
 exprST --> intExprST, {asserta(temp(1,'int'))}.
 exprST --> stringExprST, {asserta(temp(1,'string'))}.
 exprST --> booleanExprST, {asserta(temp(1,'boolean'))}.
-exprST --> idST, {currentScope(X), temp(0,Y), scopeNoType(X,Y,Z), asserta(temp(1,Z))}.
+exprST --> idST, {currentScope(X), temp(0,Y), scopeNoType(X,Y,Z), use(X,Y,Z), asserta(temp(1,Z))}.
 
-intExprST --> digitST, intopST, exprST.
+intExprST --> digitST, intopST, exprST, {temp(1,X), X == 'int'}.
+intExprST --> digitST, intopST, exprST, {currentScope(X), scope(Y), write('type mismatch in int expression in scope- '), writeln(X),
+	write('last created scope- '), writeln(Y), abort}.
 intExprST --> digitST.
 
 stringExprST --> ['"'], charListST, ['"'].
