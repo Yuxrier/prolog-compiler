@@ -6,6 +6,7 @@
 :- dynamic generatedCode/1.
 
 lexAndParse(Filename):-
+	clearDictionaries,
 	lex(Filename, X), !,
 	write('Lex succeeded - '),
 	writeln(X),
@@ -24,7 +25,10 @@ lexAndParse(Filename):-
 	writeln('Semantic Analysis succeeded,'),
 	listing(symbolTable/5),
 	initializeCheck,
-	useCheck.
+	useCheck, !.
+
+clearDictionaries:-retractall(symbolTable(_,_,_,_,_)),retractall(scope(_)),retractall(currentScope(_)),
+retractall(child(_,_)),retractall(temp(_,_)).
 
 generateCode(Filename):-
 	lex(Filename, X), !,
