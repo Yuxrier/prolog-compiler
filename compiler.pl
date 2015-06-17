@@ -1,11 +1,16 @@
-:- dynamic scope/1.
-:- dynamic currentScope/1.
-:- dynamic child/2.
-:- dynamic symbolTable/5.
-:- dynamic temp/2.
-:- dynamic generatedCode/1.
+% declaring tables and the like
+:- dynamic scope/1. 		%holds the last created scope
+:- dynamic currentScope/1. 	%holds the scope that we are currently in
+:- dynamic child/2. 		%table listing (parent, child) for usage with scope
+:- dynamic symbolTable/5. 	%table holding (scope, identifier, type, initialized flag, usage flag). created in semantic analysis, used in SA and code generation
+:- dynamic temp/2. 		%table for holding temporary values- (number, value) numbers 0 and 2 will hold identifier, 1 and 3 hold types
+:- dynamic generatedCode/1. 	%holds the string of generatedCode
+:- dynamic heapString/1.	%holds the string containing the ascii values of strings used in the code
+:- dynamic staticData/4.	%table listing (temporary code, variable, scope, and offset), for use in code generation.
+:- dynamic jumpData/2.		%table listing (temporary code, distance) for use in code generation
 
-lexAndParse(Filename):-
+%main method. does everything except code generation
+compile(Filename):-
 	clearDictionaries,
 	lex(Filename, X), !,
 	write('Lex succeeded - '),
@@ -27,43 +32,60 @@ lexAndParse(Filename):-
 	initializeCheck,
 	useCheck, !.
 
+%clears all tables so that multiple things can be compiled
 clearDictionaries:-retractall(symbolTable(_,_,_,_,_)),retractall(scope(_)),retractall(currentScope(_)),
-retractall(child(_,_)),retractall(temp(_,_)).
+retractall(child(_,_)),retractall(temp(_,_)), retractall(generatedCode(_)),retractall(heapString(_)),
+retractall(staticData(_,_,_,_)),retractall(jumpData(_,_)).
 
+%compiles and generates code
 generateCode(Filename):-
+	clearDictionaries,
 	lex(Filename, X), !,
+	write('Lex succeeded - '),
+	writeln(X),
 	programNT(X, []), !,
 	program(CST, X, []), !,
 	programAST(AST, X, []), !,
+	writeln('Parse succeeded,'),
 	write('CST - '),
 	writeln(CST),
 	write('AST - '),
 	writeln(AST), !,
 	assert(currentScope(0)),
 	assert(scope(0)),
-	assert(generatedCode([])),
+	assert(generatedCode("")),
 	programST(X, []), !,
-	programCG(X, []), !,
+	writeln('Semantic Analysis succeeded,'),
+	listing(symbolTable/5),
+	initializeCheck,
+	useCheck, !, programCG(X, []), !,
 	write('Code- '),generatedCode(Y), atom_codes(Z, Y),
 	writeln(Z).
 
+%rule that takes in a file (Filename), and returns a list of tokens (X). It makes sure to close the file after reading it in.
 lex(Filename, X):-
 	open(Filename,read,Str),
 	lexMain(Str,X),
 	close(Str).
 
+%helper rule to lex that takes in a stream of characters and returns a list of tokens.
 lexMain(InStream, Tokens):-
 	readWord(InStream, Token),
 	readList(Token, Tokens, InStream).
 
+%readList is a rule that takes in a token, returns a list of tokens, and takes in a stream of characters
+%this particular iteration is the base case and reads in the end of file token. It also checks to see if
+%there is any code after the program, and returns a warning if there is.
 readList($,[$],InStream):- 
 	peek_code(InStream,TestChar),
 	afterProgramCodeChecker(TestChar), !.
 
+%this iteration ignores an empty token (any whitespace), and continues reading
 readList('',Tokens,InStream):-
 	readWord(InStream,NextToken),
 	readList(NextToken,Tokens,InStream).
 
+%this iteration deals with quotes by taking in the quote and splitting it up into individual lexemes
 readList(TestQuote,Tokens,InStream):-
 	sub_string(TestQuote,0,1, _, '"'),
 	string_chars(TestQuote,Quote),
@@ -71,33 +93,50 @@ readList(TestQuote,Tokens,InStream):-
 	readList(NextToken,NextTokens,InStream),
 	append(Quote,NextTokens,Tokens).
 
+%this iteration reads in any other token not dealt with yet, adds it to the list, and then continues reading
 readList(Token,[Token|Tokens],InStream):-
 	readWord(InStream,NextToken),
 	readList(NextToken,Tokens,InStream).
 
+%afterProgramCodeChecker is a rule that checks to make sure that the next token after the $ is the
+%end_of_file character. If not, it issues a warning but allows the code to finish.
 afterProgramCodeChecker(-1):- !.
 afterProgramCodeChecker(end_of_file):- !.
 afterProgramCodeChecker(_):- writeln('Warning- code exists after program ends.'), !.
 
+
+%read-word is a helper rule that starts the process of reading in a token. it takes in a stream and returns a token (W)
 readWord(InStream, W):-
 	get_code(InStream,ThisChar),
 	checkCharAndReadRest(ThisChar,Chars,InStream),
 	atom_codes(W,Chars).
 
+%checkCharAndReadRest is the rule that handles the bulk of the work in reading in a token
+%it takes in a character, returns a list of characters, and takes in a stream. Each iteration
+%of this rule handles a different character.
+
+%These three handle different types of whitespace
 checkCharAndReadRest(10,[],_):- !.
 checkCharAndReadRest(32,[],_):- !.
 checkCharAndReadRest(9,[],_):- !.
+
+%these two handle if end of file is reached before reaching a $. A warning is issued in this case
+%and a $ is added.
 checkCharAndReadRest(-1,[$],_):- writeln('Warning- no $ included'), !.
 checkCharAndReadRest(end_of_file,[$],_):- writeln('Warning- no $ included'), !.
 
+%these two handle parenthesis
 checkCharAndReadRest(40,[40],_):- !.
 checkCharAndReadRest(41,[41],_):- !.
 
+%these two handle curly braces
 checkCharAndReadRest(123,[123],_):- !.
 checkCharAndReadRest(125,[125],_):- !.
 
+%this handles the dollar sign
 checkCharAndReadRest(36,[36],_):- !.
 
+%this set handles digits
 checkCharAndReadRest(48,[48],_):- !.
 checkCharAndReadRest(49,[49],_):- !.
 checkCharAndReadRest(50,[50],_):- !.
@@ -109,40 +148,50 @@ checkCharAndReadRest(55,[55],_):- !.
 checkCharAndReadRest(56,[56],_):- !.
 checkCharAndReadRest(57,[57],_):- !.
 
+%this handles the plus sign
 checkCharAndReadRest(43,[43],_):- !.
 
+%this handles the equals sign and continues to check if another equals sign is present
 checkCharAndReadRest(61,[61|Chars],InStream):-
 	peek_code(InStream,NextChar),
 	checkBoolOp(NextChar,Chars,InStream).
 
+%this handles the exclamation point and checks to see if an equals sign is present afterwards
 checkCharAndReadRest(33,[33|Chars],InStream):-
 	peek_code(InStream,NextChar),
 	checkBoolOp(NextChar,Chars,InStream).
 
+%the letter a
 checkCharAndReadRest(97,[97],_):- !.
 
+%the letter b. first checks to see if boolean can be formed. If not, simply returns a token of b.
 checkCharAndReadRest(98,[98|Chars],InStream):- 
 	peek_code(InStream,NextChar),
 	checkBooleanOne(NextChar,Chars,InStream).	
 checkCharAndReadRest(98,[98],_):- !.
 
+%letters c-e
 checkCharAndReadRest(99,[99],_):- !.
 checkCharAndReadRest(100,[100],_):- !.
 checkCharAndReadRest(101,[101],_):- !.
 
+%letter f, checks for false first
 checkCharAndReadRest(102,[102|Chars],InStream):- 
 	peek_code(InStream,NextChar),
 	checkFalseOne(NextChar,Chars,InStream).
 checkCharAndReadRest(102,[102],_):- !.
 
+%letters g and h
 checkCharAndReadRest(103,[103],_):- !.
 checkCharAndReadRest(104,[104],_):- !.
 
+%letter i, checks for if and int first
 checkCharAndReadRest(105,[105|Chars],InStream):- 
 	peek_code(InStream,NextChar),
 	checkIOne(NextChar,Chars,InStream).
 checkCharAndReadRest(105,[105],_):- !.
 
+%letters j-o
 checkCharAndReadRest(106,[106],_):- !.
 checkCharAndReadRest(107,[107],_):- !.
 checkCharAndReadRest(108,[108],_):- !.
@@ -150,48 +199,59 @@ checkCharAndReadRest(109,[109],_):- !.
 checkCharAndReadRest(110,[110],_):- !.
 checkCharAndReadRest(111,[111],_):- !.
 
+%letter p, checks for print first
 checkCharAndReadRest(112,[112|Chars],InStream):- 
 	peek_code(InStream,NextChar),
 	checkPrintOne(NextChar,Chars,InStream).
 checkCharAndReadRest(112,[112],_):- !.
 
+%letters q and r
 checkCharAndReadRest(113,[113],_):- !.
 checkCharAndReadRest(114,[114],_):- !.
 
+%letter s, checks for string first
 checkCharAndReadRest(115,[115|Chars],InStream):- 
 	peek_code(InStream,NextChar),
 	checkStringOne(NextChar,Chars,InStream).
 checkCharAndReadRest(115,[115],_):- !.
 
+%letter t, checks for true first
 checkCharAndReadRest(116,[116|Chars],InStream):- 
 	peek_code(InStream,NextChar),
 	checkTrueOne(NextChar,Chars,InStream).
 checkCharAndReadRest(116,[116],_):- !.
 	
+%letters u and v
 checkCharAndReadRest(117,[117],_):- !.
 checkCharAndReadRest(118,[118],_):- !.
 
+%letter w, checks for while first
 checkCharAndReadRest(119,[119|Chars],InStream):-
 	peek_code(InStream,NextChar),
 	checkWhileOne(NextChar,Chars,InStream).
 checkCharAndReadRest(119,[119],_):- !.
 
+%letters x-z
 checkCharAndReadRest(120,[120],_):- !.
 checkCharAndReadRest(121,[121],_):- !.
 checkCharAndReadRest(122,[122],_):- !.
 
+%handles the first quotation mark and throws into quotationMode
 checkCharAndReadRest(34,[34|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
+%handles any other characters (such as upper case letters) and issues a lex error.
 checkCharAndReadRest(X,[],_):-
 	write('Invalid token- '),
 	writeln(X), !, fail.
 
+%checks for equals sign to conclude a boolean operator
 checkBoolOp(61,[61],InStream):- get_code(InStream,_), !.
 
 checkBoolOp(_,[],_):- !.
 
+%handles the keyword boolean
 checkBooleanOne(111,[111|Chars],InStream):- 
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -227,6 +287,7 @@ checkBooleanSix(110,[110],_):- !.
 
 checkBooleanSix(_,[],_):- fail.
 
+%handles the keyword false
 checkFalseOne(97,[97|Chars],InStream):-
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -250,6 +311,7 @@ checkFalseFour(101,[101],_):- !.
 
 checkFalseFour(_,[],_):- fail.
 
+%handles the keywords if and int
 checkIOne(102,[102],InStream):- 	
 	get_code(InStream,_),!.
 
@@ -264,6 +326,7 @@ checkITwo(116,[116],_):- !.
 
 checkITwo(_,[],_):- fail.
 
+%handles the keyword print
 checkPrintOne(114,[114|Chars],InStream):-
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -287,6 +350,7 @@ checkPrintFour(116,[116],_):- !.
 
 checkPrintFour(_,[],_):- fail.
 
+%handles the keyword string
 checkStringOne(116,[116|Chars],InStream):-
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -316,6 +380,7 @@ checkStringFive(103,[103],_):- !.
 
 checkStringFive(_,[],_):- fail.
 
+%handles the keyword true
 checkTrueOne(114,[114|Chars],InStream):-
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -333,6 +398,7 @@ checkTrueThree(101,[101],_):- !.
 
 checkTrueThree(_,[],_):- fail.
 
+%handles the keyword while
 checkWhileOne(104,[104|Chars],InStream):-
 	get_code(InStream,_),
 	get_code(InStream,NextChar),
@@ -354,16 +420,20 @@ checkWhileFour(101,[101],_):- !.
 
 checkWhileFour(_,[],_):- fail.
 
+%handles quotes
 quotationMode(34,[34],_):- !.
 
 quotationMode(X,[X|Chars],InStream):-
 	get_code(InStream,NextChar),
 	quotationMode(NextChar,Chars,InStream).
 
+%error state in parse, can accept any character
 errorHandling --> errorHandlingHelper.
 
 errorHandlingHelper --> [].
 errorHandlingHelper --> [_], errorHandlingHelper.
+
+%a DCG that handles parsing and will show any errors that occur. It CAN get back on track after an error, but it isn't very good at it.
 
 programNT --> blockNT, [$].
 
@@ -475,6 +545,9 @@ boolvalNT --> [true].
 
 intopNT --> ['+'].
 
+%rules for semantic analysis. They're set up to handle scope checking, type checking, and checking to see
+%if a variable is declared twice. If any of these situations come up, the semantic analysis fails
+
 scopeCheck(0,_,_):- currentScope(X), scope(Y), write('scope or type error in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
 scopeCheck(X,Y,Z):- symbolTable(X,Y,S,_,_), !, S == Z.
@@ -489,6 +562,8 @@ redeclareCheck(X,Y):- \+ symbolTable(X,Y,_,_,_).
 redeclareCheck(_,_):-  currentScope(X), scope(Y), write('redeclared identifier or integer type mismatch in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
 
+%rules that act as modifier functions for initializing and using variables
+
 initialize(0,_,_):- !.
 initialize(X,Y,Z):-retract(symbolTable(X,Y,Z,0,U)), asserta(symbolTable(X,Y,Z,1,U)),!.
 initialize(X,Y,Z):-child(S,X), initialize(S,Y,Z).
@@ -496,6 +571,9 @@ initialize(X,Y,Z):-child(S,X), initialize(S,Y,Z).
 use(0,_,_):- !.
 use(X,Y,Z):-retract(symbolTable(X,Y,Z,I,0)), asserta(symbolTable(X,Y,Z,I,1)),!.
 use(X,Y,Z):-child(S,X), use(S,Y,Z).
+
+%more semantic analysis rules. they check to see if a variable is initialized and unused or is declared but
+%uninitialized. If so, they issue a warning and proceed on their merry way.
 
 initializeCheck:- \+ symbolTable(_,_,_,0,_).
 initializeCheck:- symbolTable(X,Y,Z,0,_), write('Warning- uninitialized variable exists in scope '),
@@ -506,6 +584,8 @@ useCheck:- \+ symbolTable(_,_,_,_,0).
 useCheck:- symbolTable(X,Y,Z,_,0), write('Warning- unused variable exists in scope '), write(X),
 	write(' with identifier '), write(Y),
 	write(' and type '), writeln(Z).
+
+%the actual semantic analysis DCG. type and scope checking is done at certain bottle-necks within the grammar.
 
 programST --> blockST, [$].
 
@@ -608,6 +688,8 @@ boolvalST --> [true].
 
 intopST --> ['+'].
 
+%DCG that produces a concrete syntax tree.
+
 program(program(BLOCK, $)) --> block(BLOCK), [$].
 
 block(block('{', STATEMENTLIST, '}')) --> ['{'],  statementList(STATEMENTLIST), ['}'].
@@ -703,6 +785,8 @@ boolval(boolval(true)) --> [true].
 
 intop(intop('+')) --> ['+'].
 
+%DCG that produces an abstract syntax tree.
+
 programAST((BLOCK, $)) --> blockAST(BLOCK), [$].
 
 blockAST(('{', STATEMENTLIST, '}')) --> ['{'],  statementListAST(STATEMENTLIST), ['}'].
@@ -797,6 +881,8 @@ boolvalAST((false)) --> [false].
 boolvalAST((true)) --> [true].
 
 intopAST(('+')) --> ['+'].
+
+%DCG that generates code.
 
 programCG --> blockCG, [$].
 
