@@ -3,8 +3,8 @@
 :- dynamic currentScope/1. 	%holds the scope that we are currently in
 :- dynamic child/2. 		%table listing (parent, child) for usage with scope
 :- dynamic symbolTable/5. 	%table holding (scope, identifier, type, initialized flag, usage flag). created in semantic analysis, used in SA and code generation
-:- dynamic temp/2. 		%table for holding temporary values- (number, value) numbers 0 and 2 will hold identifier, 1 and 3 hold types
-:- dynamic generatedCode/1. 	%holds the string of generatedCode
+:- dynamic temp/2. 			%table for holding temporary values- (number, value) numbers 0 and 2 will hold identifier, 1 and 3 hold types
+:- dynamic generatedCode/1. %holds the string of generatedCode
 :- dynamic heapString/1.	%holds the string containing the ascii values of strings used in the code
 :- dynamic staticData/4.	%table listing (temporary code, variable, scope, and offset), for use in code generation.
 :- dynamic jumpData/2.		%table listing (temporary code, distance) for use in code generation
@@ -882,6 +882,10 @@ boolvalAST((true)) --> [true].
 
 intopAST(('+')) --> ['+'].
 
+tempVar(T,Y):- retract(tempVarTable(X)), Y is X + 1, asserta(tempVarTable(Y)), number_string(Y,S),
+	append("T", S, Z), append(Z, "XX", T).
+tempVar(T,0):- asserta(tempVarTable(0)), T = "T0XX".
+
 %DCG that generates code.
 
 programCG --> blockCG, [$].
@@ -900,9 +904,13 @@ statementCG --> blockCG.
 
 printStatementCG --> [print], ['('], exprCG, [')'].
 
-assignmentStatementCG --> idCG, [=], exprCG, {generatedCode(X), string_concat(X,"A9008D42",Y), asserta(generatedCode(Y))}.
+assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int'},[=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
+	append("AD",T,V),tempVar(NewT,Offset),append(V,"8D",W),append(W,NewT,Y),assert(staticData(NewT,NewIdentifier,Scope,Offset)), retract(generatedCode(X)), append(X,Y,Z), asserta(generatedCode(Z))}.
+assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int'},[=],exprCG,{}.
 
-varDeclCG --> typeCG, idCG, {generatedCode(X), append(X,"A9008D42",Y), asserta(generatedCode(Y))}.
+varDeclCG --> [int], idCG, {generatedCode(X), append(X,"A9008D",Y), tempVar(T, Offset), append(Y, T, Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
+varDeclCG --> [string], idCG, {tempVar(T, Offset),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
+varDeclCG --> [boolean], idCG, {generatedCode(X), append(X,"A9008D",Y), tempVar(T, Offset), append(Y,T,Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
 
 whileStatementCG --> [while], booleanExprCG, blockCG.
 
@@ -923,53 +931,49 @@ booleanExprCG --> boolvalCG.
 
 idCG --> charCG.
 
-charListCG --> charCG, charListCG.
+charListCG --> charCG, {retract(temp(_,_))}, charListCG.
 charListCG --> spaceCG, charListCG.
 charListCG --> [].
 
-typeCG --> [int].
-typeCG --> [string].
-typeCG --> [boolean].
-
-charCG --> [a].
-charCG --> [b].
-charCG --> [c].
-charCG --> [d].
-charCG --> [e].
-charCG --> [f].
-charCG --> [g].
-charCG --> [h].
-charCG --> [i].
-charCG --> [j].
-charCG --> [k].
-charCG --> [l].
-charCG --> [m].
-charCG --> [n].
-charCG --> [o].
-charCG --> [p].
-charCG --> [q].
-charCG --> [r].
-charCG --> [s].
-charCG --> [t].
-charCG --> [u].
-charCG --> [v].
-charCG --> [w].
-charCG --> [x].
-charCG --> [y].
-charCG --> [z].
+charCG --> [a], {asserta(temp(0,a))}.
+charCG --> [b], {asserta(temp(0,b))}.
+charCG --> [c], {asserta(temp(0,c))}.
+charCG --> [d], {asserta(temp(0,d))}.
+charCG --> [e], {asserta(temp(0,e))}.
+charCG --> [f], {asserta(temp(0,f))}.
+charCG --> [g], {asserta(temp(0,g))}.
+charCG --> [h], {asserta(temp(0,h))}.
+charCG --> [i], {asserta(temp(0,i))}.
+charCG --> [j], {asserta(temp(0,j))}.
+charCG --> [k], {asserta(temp(0,k))}.
+charCG --> [l], {asserta(temp(0,l))}.
+charCG --> [m], {asserta(temp(0,m))}.
+charCG --> [n], {asserta(temp(0,n))}.
+charCG --> [o], {asserta(temp(0,o))}.
+charCG --> [p], {asserta(temp(0,p))}.
+charCG --> [q], {asserta(temp(0,q))}.
+charCG --> [r], {asserta(temp(0,r))}.
+charCG --> [s], {asserta(temp(0,s))}.
+charCG --> [t], {asserta(temp(0,t))}.
+charCG --> [u], {asserta(temp(0,u))}.
+charCG --> [v], {asserta(temp(0,v))}.
+charCG --> [w], {asserta(temp(0,w))}.
+charCG --> [x], {asserta(temp(0,x))}.
+charCG --> [y], {asserta(temp(0,y))}.
+charCG --> [z], {asserta(temp(0,z))}.
 
 spaceCG --> [' '].
 
-digitCG --> ['1'].
-digitCG --> ['2'].
-digitCG --> ['3'].
-digitCG --> ['4'].
-digitCG --> ['5'].
-digitCG --> ['6'].
-digitCG --> ['7'].
-digitCG --> ['8'].
-digitCG --> ['9'].
-digitCG --> ['0'].
+digitCG --> ['1'],{asserta(temp(0,"1"))}.
+digitCG --> ['2'],{asserta(temp(0,"2"))}.
+digitCG --> ['3'],{asserta(temp(0,"3"))}.
+digitCG --> ['4'],{asserta(temp(0,"4"))}.
+digitCG --> ['5'],{asserta(temp(0,"5"))}.
+digitCG --> ['6'],{asserta(temp(0,"6"))}.
+digitCG --> ['7'],{asserta(temp(0,"7"))}.
+digitCG --> ['8'],{asserta(temp(0,"8"))}.
+digitCG --> ['9'],{asserta(temp(0,"9"))}.
+digitCG --> ['0'],{asserta(temp(0,"0"))}.
 
 boolopCG --> ['=='].
 boolopCG --> ['!='].
