@@ -894,8 +894,8 @@ backpatch:-retract(staticData(T,V,S,O)),backpatchHelper(T,V,S,O), backpatch.
 backpatch:- tempVar(_,Offset), generatedCode(X), heap(Y), string_concat(X,Y,Z), string_length(Z, Length), Test is Length + Offset, !, Test =< 255.
 backpatch:- writeln('Error: Code too long'), !, fail.
 
-backpatchHelper(T,_,_,_):- retract(generatedCode(X)),string_length(X,CodeLength),split_string(X,T,"",L),format(string(Location),'~16R',CodeLength),atomics_to_string(L,Location,Z), 
-	asserta(generatedCode(Z)).
+backpatchHelper(T,_,_,O):- retract(generatedCode(X)),string_length(X,CodeLength),NumberLocation is CodeLength + O,split_string(X,T,"",L),format(string(Location),'~16R',NumberLocation),
+	atomics_to_string(L,Location,Z), asserta(generatedCode(Z)).
 
 %DCG that generates code.
 %TODO-boolean expressions need to be handled, while statements, if statements
@@ -916,10 +916,12 @@ statementCG --> blockCG.
 
 printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='string',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
 	string_concat(V, "A202FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='string',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
+printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
 	string_concat(V, "A201FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], intExprCG, {retract(generatedCode(X)), string_concat(X,"A201FF",Z),asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], booleanExprCG, {retract(generatedCode(X)), string_concat(X,"A201FF",Z),asserta(generatedCode(Z))}, [')'].
+printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='boolean',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
+	string_concat(V, "A201FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}, [')'].
+printStatementCG --> [print], ['('], intExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
+printStatementCG --> [print], ['('], booleanExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 253 - Length, format(string(Location), '~16R', Position), string_concat("AC", Location, W),
 	string_concat(W,"00A202FF",Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}, [')'].
 
