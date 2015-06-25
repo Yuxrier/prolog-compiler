@@ -8,6 +8,7 @@
 :- dynamic heapString/1.	%holds the string containing the ascii values of strings used in the code
 :- dynamic staticData/4.	%table listing (temporary code, variable, scope, and offset), for use in code generation.
 :- dynamic jumpData/2.		%table listing (temporary code, distance) for use in code generation
+:- dynamic heap/1			%holds all of the strings made with heapString
 
 %main method. does everything except code generation
 compile(Filename):-
@@ -695,7 +696,7 @@ program(program(BLOCK, $)) --> block(BLOCK), [$].
 block(block('{', STATEMENTLIST, '}')) --> ['{'],  statementList(STATEMENTLIST), ['}'].
 
 statementList(statementList(STATEMENT, STATEMENTLIST)) --> statement(STATEMENT), statementList(STATEMENTLIST).
-statementList(statementList([])) --> []. %Might be wrong
+statementList(statementList([])) --> [].
 
 statement(statement(PRINTSTATEMENT)) --> printStatement(PRINTSTATEMENT).
 statement(statement(ASSIGNMENTSTATEMENT)) --> assignmentStatement(ASSIGNMENTSTATEMENT).
@@ -731,7 +732,7 @@ id(id(CHAR)) --> char(CHAR).
 
 charList(charList(CHAR, CHARLIST)) --> char(CHAR), charList(CHARLIST).
 charList(charList(SPACE, CHARLIST)) --> space(SPACE), charList(CHARLIST).
-charList(charlist([])) --> []. %could also be wrong
+charList(charlist([])) --> [].
 
 type(type(int)) --> [int].
 type(type(string)) --> [string].
@@ -886,11 +887,14 @@ tempVar(T,Y):- retract(tempVarTable(X)), Y is X + 1, asserta(tempVarTable(Y)), n
 	append("T", S, Z), append(Z, "XX", T).
 tempVar(T,0):- asserta(tempVarTable(0)), T = "T0XX".
 
+staticData(T,V,S,O):-child(P,S), staticData(T,V,P,O).
+
 %DCG that generates code.
+%TODO-string expressions and boolean expressions need to be handled, print statements, while statements, if statements, and I need a back-patching method
 
 programCG --> blockCG, [$].
 
-blockCG --> ['{'],  statementListCG, ['}'].
+blockCG --> ['{'],{scope(X), Y is X + 1, currentScope(Z), assert(child(Z,Y)), asserta(scope(Y)), asserta(currentScope(Y))}, statementListCG, ['}'], {retract(currentScope(_))}.
 
 statementListCG --> statementCG, statementListCG.
 statementListCG --> [].
@@ -905,8 +909,8 @@ statementCG --> blockCG.
 printStatementCG --> [print], ['('], exprCG, [')'].
 
 assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int'},[=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
-	append("AD",T,V),tempVar(NewT,Offset),append(V,"8D",W),append(W,NewT,Y),assert(staticData(NewT,NewIdentifier,Scope,Offset)), retract(generatedCode(X)), append(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int'},[=],exprCG,{}.
+	append("AD",T,V),staticData(NewT,NewIdentifier,Scope,_),append(V,"8D",W),append(W,NewT,Y), retract(generatedCode(X)), append(X,Y,Z), asserta(generatedCode(Z))}.
+assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int'},[=],{assert(temp('intTest','true'))},exprCG,{}.
 
 varDeclCG --> [int], idCG, {generatedCode(X), append(X,"A9008D",Y), tempVar(T, Offset), append(Y, T, Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
 varDeclCG --> [string], idCG, {tempVar(T, Offset),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
@@ -921,46 +925,49 @@ exprCG --> stringExprCG.
 exprCG --> booleanExprCG.
 exprCG --> idCG.
 
-intExprCG --> digitCG, intopCG, exprCG.
-intExprCG --> digitCG.
+intExprCG --> {retract(temp('intTest',Test)), Test == 'true'}, digitCG, {temp(0,Digit), retract(generatedCode(X)), append("A90",Digit,W), append(W,"8DFF00",Y), append(X,Y,Z), asserta(generatedCode(Z))}, intopCG, intExprCG.
+intExprCG --> digitCG, {temp(0,Digit), retract(generatedCode(X)), append("A90", Digit, W), append(W, "6DFF008DFF00", Y), append(X,Y,Z), asserta(generatedCode(Z))}, intopCG, intExprCG.
+intExprCG --> {retract(temp('intTest',Test)), Test == 'true'}, digitCG, {temp(0,Digit), retract(generatedCode(X)), append("A90",Digit,W), append(W,"8DFF00",Y), append(X,Y,V)}, intopCG, idCG,{temp(0,Identifier), currentScope(Scope), staticData(T,Identifier,Scope,_), append("AD",T,U), append(U,"6DFF00",Z),asserta(generatedCode(Z))}.
+intExprCG --> digitCG, {temp(0,Digit), retract(generatedCode(X)), append("A90", Digit, W), append(W, "6DFF008DFF00", Y), append(X,Y,V)}, intopCG, idCG,{temp(0,Identifier), currentScope(Scope), staticData(T,Identifier,Scope,_), append("AD",T,U), append(U,"6DFF00",Z),asserta(generatedCode(Z))}.
+intExprCG --> digitCG, {temp(0,Digit), retract(generatedCode(X)), append("A90", Digit, W), append(W, "6DFF00",Y), append(X,Y,Z), asserta(generatedCode(Z))}.
 
-stringExprCG --> ['"'], charListCG, ['"'].
+stringExprCG --> ['"'], charListCG, {retract(heapString(X)), retract(heap(Y)), append(X,Y,Z), asserta(heap(Z))}, ['"'].
 
 booleanExprCG --> ['('], exprCG, boolopCG, exprCG, [')'].
 booleanExprCG --> boolvalCG.
 
 idCG --> charCG.
 
-charListCG --> charCG, {retract(temp(_,_))}, charListCG.
-charListCG --> spaceCG, charListCG.
+charListCG --> charCG, {retract(temp('ascii',CharCode)), retract(temp(_,_)), retract(heapString(X)), append(X,CharCode,Z), asserta(heapString(Z))}, charListCG.
+charListCG --> spaceCG, {retract(heapString(X)), append(X, "20", Z), asserta(heapString(Z))}, charListCG.
 charListCG --> [].
 
-charCG --> [a], {asserta(temp(0,a))}.
-charCG --> [b], {asserta(temp(0,b))}.
-charCG --> [c], {asserta(temp(0,c))}.
-charCG --> [d], {asserta(temp(0,d))}.
-charCG --> [e], {asserta(temp(0,e))}.
-charCG --> [f], {asserta(temp(0,f))}.
-charCG --> [g], {asserta(temp(0,g))}.
-charCG --> [h], {asserta(temp(0,h))}.
-charCG --> [i], {asserta(temp(0,i))}.
-charCG --> [j], {asserta(temp(0,j))}.
-charCG --> [k], {asserta(temp(0,k))}.
-charCG --> [l], {asserta(temp(0,l))}.
-charCG --> [m], {asserta(temp(0,m))}.
-charCG --> [n], {asserta(temp(0,n))}.
-charCG --> [o], {asserta(temp(0,o))}.
-charCG --> [p], {asserta(temp(0,p))}.
-charCG --> [q], {asserta(temp(0,q))}.
-charCG --> [r], {asserta(temp(0,r))}.
-charCG --> [s], {asserta(temp(0,s))}.
-charCG --> [t], {asserta(temp(0,t))}.
-charCG --> [u], {asserta(temp(0,u))}.
-charCG --> [v], {asserta(temp(0,v))}.
-charCG --> [w], {asserta(temp(0,w))}.
-charCG --> [x], {asserta(temp(0,x))}.
-charCG --> [y], {asserta(temp(0,y))}.
-charCG --> [z], {asserta(temp(0,z))}.
+charCG --> [a], {asserta(temp(0,a)),asserta('ascii',"61")}.
+charCG --> [b], {asserta(temp(0,b)),asserta('ascii',"62")}.
+charCG --> [c], {asserta(temp(0,c)),asserta('ascii',"63")}.
+charCG --> [d], {asserta(temp(0,d)),asserta('ascii',"64")}.
+charCG --> [e], {asserta(temp(0,e)),asserta('ascii',"65")}.
+charCG --> [f], {asserta(temp(0,f)),asserta('ascii',"66")}.
+charCG --> [g], {asserta(temp(0,g)),asserta('ascii',"67")}.
+charCG --> [h], {asserta(temp(0,h)),asserta('ascii',"68")}.
+charCG --> [i], {asserta(temp(0,i)),asserta('ascii',"69")}.
+charCG --> [j], {asserta(temp(0,j)),asserta('ascii',"6A")}.
+charCG --> [k], {asserta(temp(0,k)),asserta('ascii',"6B")}.
+charCG --> [l], {asserta(temp(0,l)),asserta('ascii',"6C")}.
+charCG --> [m], {asserta(temp(0,m)),asserta('ascii',"6D")}.
+charCG --> [n], {asserta(temp(0,n)),asserta('ascii',"6E")}.
+charCG --> [o], {asserta(temp(0,o)),asserta('ascii',"6F")}.
+charCG --> [p], {asserta(temp(0,p)),asserta('ascii',"70")}.
+charCG --> [q], {asserta(temp(0,q)),asserta('ascii',"71")}.
+charCG --> [r], {asserta(temp(0,r)),asserta('ascii',"72")}.
+charCG --> [s], {asserta(temp(0,s)),asserta('ascii',"73")}.
+charCG --> [t], {asserta(temp(0,t)),asserta('ascii',"74")}.
+charCG --> [u], {asserta(temp(0,u)),asserta('ascii',"75")}.
+charCG --> [v], {asserta(temp(0,v)),asserta('ascii',"76")}.
+charCG --> [w], {asserta(temp(0,w)),asserta('ascii',"77")}.
+charCG --> [x], {asserta(temp(0,x)),asserta('ascii',"78")}.
+charCG --> [y], {asserta(temp(0,y)),asserta('ascii',"79")}.
+charCG --> [z], {asserta(temp(0,z)),asserta('ascii',"7A")}.
 
 spaceCG --> [' '].
 
