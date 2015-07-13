@@ -550,10 +550,10 @@ intopNT --> ['+'].
 %rules for semantic analysis. They're set up to handle scope checking, type checking, and checking to see
 %if a variable is declared twice. If any of these situations come up, the semantic analysis fails
 
-scopeCheck(0,_,_):- currentScope(X), scope(Y), write('scope or type error in scope- '), writeln(X),
+typeCheck(0,_,_):- currentScope(X), scope(Y), write('type error in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
-scopeCheck(X,Y,Z):- symbolTable(X,Y,S,_,_), !, S == Z.
-scopeCheck(X,Y,Z):- child(S,X), scopeCheck(S,Y,Z).
+typeCheck(X,Y,Z):- symbolTable(X,Y,S,_,_), !, S == Z.
+typeCheck(X,Y,Z):- child(S,X), typeCheck(S,Y,Z).
 
 scopeNoType(0,_,_):- currentScope(X), scope(Y), write('scope error in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
@@ -607,7 +607,7 @@ statementST --> blockST.
 
 printStatementST --> [print], ['('], exprST, [')'].
 
-assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y), scopeCheck(X, Y, Z), initialize(X,Y,Z), retract(temp(_,_)) }.
+assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y),scopeNoType(X,Y), typeCheck(X, Y, Z), initialize(X,Y,Z), retract(temp(_,_)) }.
 
 varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)),redeclareCheck(X,Y), asserta(symbolTable(X,Y,Z,0,0))}.
 
@@ -966,32 +966,32 @@ charListCG --> charCG, {retract(temp('ascii',CharCode)), retract(temp(_,_)), ret
 charListCG --> spaceCG, {retract(heapString(X)), string_concat(X, "20", Z), asserta(heapString(Z))}, charListCG.
 charListCG --> [].
 
-charCG --> [a], {asserta(temp(0,a)),asserta('ascii',"61")}.
-charCG --> [b], {asserta(temp(0,b)),asserta('ascii',"62")}.
-charCG --> [c], {asserta(temp(0,c)),asserta('ascii',"63")}.
-charCG --> [d], {asserta(temp(0,d)),asserta('ascii',"64")}.
-charCG --> [e], {asserta(temp(0,e)),asserta('ascii',"65")}.
-charCG --> [f], {asserta(temp(0,f)),asserta('ascii',"66")}.
-charCG --> [g], {asserta(temp(0,g)),asserta('ascii',"67")}.
-charCG --> [h], {asserta(temp(0,h)),asserta('ascii',"68")}.
-charCG --> [i], {asserta(temp(0,i)),asserta('ascii',"69")}.
-charCG --> [j], {asserta(temp(0,j)),asserta('ascii',"6A")}.
-charCG --> [k], {asserta(temp(0,k)),asserta('ascii',"6B")}.
-charCG --> [l], {asserta(temp(0,l)),asserta('ascii',"6C")}.
-charCG --> [m], {asserta(temp(0,m)),asserta('ascii',"6D")}.
-charCG --> [n], {asserta(temp(0,n)),asserta('ascii',"6E")}.
-charCG --> [o], {asserta(temp(0,o)),asserta('ascii',"6F")}.
-charCG --> [p], {asserta(temp(0,p)),asserta('ascii',"70")}.
-charCG --> [q], {asserta(temp(0,q)),asserta('ascii',"71")}.
-charCG --> [r], {asserta(temp(0,r)),asserta('ascii',"72")}.
-charCG --> [s], {asserta(temp(0,s)),asserta('ascii',"73")}.
-charCG --> [t], {asserta(temp(0,t)),asserta('ascii',"74")}.
-charCG --> [u], {asserta(temp(0,u)),asserta('ascii',"75")}.
-charCG --> [v], {asserta(temp(0,v)),asserta('ascii',"76")}.
-charCG --> [w], {asserta(temp(0,w)),asserta('ascii',"77")}.
-charCG --> [x], {asserta(temp(0,x)),asserta('ascii',"78")}.
-charCG --> [y], {asserta(temp(0,y)),asserta('ascii',"79")}.
-charCG --> [z], {asserta(temp(0,z)),asserta('ascii',"7A")}.
+charCG --> [a], {asserta(temp(0,a)),asserta(temp('ascii',"61"))}.
+charCG --> [b], {asserta(temp(0,b)),asserta(temp('ascii',"62"))}.
+charCG --> [c], {asserta(temp(0,c)),asserta(temp('ascii',"63"))}.
+charCG --> [d], {asserta(temp(0,d)),asserta(temp('ascii',"64"))}.
+charCG --> [e], {asserta(temp(0,e)),asserta(temp('ascii',"65"))}.
+charCG --> [f], {asserta(temp(0,f)),asserta(temp('ascii',"66"))}.
+charCG --> [g], {asserta(temp(0,g)),asserta(temp('ascii',"67"))}.
+charCG --> [h], {asserta(temp(0,h)),asserta(temp('ascii',"68"))}.
+charCG --> [i], {asserta(temp(0,i)),asserta(temp('ascii',"69"))}.
+charCG --> [j], {asserta(temp(0,j)),asserta(temp('ascii',"6A"))}.
+charCG --> [k], {asserta(temp(0,k)),asserta(temp('ascii',"6B"))}.
+charCG --> [l], {asserta(temp(0,l)),asserta(temp('ascii',"6C"))}.
+charCG --> [m], {asserta(temp(0,m)),asserta(temp('ascii',"6D"))}.
+charCG --> [n], {asserta(temp(0,n)),asserta(temp('ascii',"6E"))}.
+charCG --> [o], {asserta(temp(0,o)),asserta(temp('ascii',"6F"))}.
+charCG --> [p], {asserta(temp(0,p)),asserta(temp('ascii',"70"))}.
+charCG --> [q], {asserta(temp(0,q)),asserta(temp('ascii',"71"))}.
+charCG --> [r], {asserta(temp(0,r)),asserta(temp('ascii',"72"))}.
+charCG --> [s], {asserta(temp(0,s)),asserta(temp('ascii',"73"))}.
+charCG --> [t], {asserta(temp(0,t)),asserta(temp('ascii',"74"))}.
+charCG --> [u], {asserta(temp(0,u)),asserta(temp('ascii',"75"))}.
+charCG --> [v], {asserta(temp(0,v)),asserta(temp('ascii',"76"))}.
+charCG --> [w], {asserta(temp(0,w)),asserta(temp('ascii',"77"))}.
+charCG --> [x], {asserta(temp(0,x)),asserta(temp('ascii',"78"))}.
+charCG --> [y], {asserta(temp(0,y)),asserta(temp('ascii',"79"))}.
+charCG --> [z], {asserta(temp(0,z)),asserta(temp('ascii',"7A"))}.
 
 spaceCG --> [' '].
 
