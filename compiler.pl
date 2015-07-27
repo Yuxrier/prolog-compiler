@@ -561,7 +561,7 @@ scopeNoType(X,Y,Z):- symbolTable(X,Y,Z,_,_), !.
 scopeNoType(X,Y,Z):- child(S,X), scopeNoType(S,Y,Z).
 
 redeclareCheck(X,Y):- \+ symbolTable(X,Y,_,_,_).
-redeclareCheck(_,_):-  currentScope(X), scope(Y), write('redeclared identifier or integer type mismatch in scope- '), writeln(X),
+redeclareCheck(_,_):-  currentScope(X), scope(Y), write('redeclared identifier in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
 
 %rules that act as modifier functions for initializing and using variables
@@ -620,10 +620,12 @@ exprST --> stringExprST, {asserta(temp(1,'string'))}.
 exprST --> booleanExprST, {asserta(temp(1,'boolean'))}.
 exprST --> idST, {currentScope(X), temp(0,Y), scopeNoType(X,Y,Z), use(X,Y,Z), asserta(temp(1,Z))}.
 
-intExprST --> digitST, intopST, exprST, {temp(1,X), X == 'int'}.
-intExprST --> digitST, intopST, exprST, {currentScope(X), scope(Y), write('type mismatch in int expression in scope- '), writeln(X),
-	write('last created scope- '), writeln(Y), abort}.
+intExprST --> digitST, intopST, exprST, intHelperST.
 intExprST --> digitST.
+
+intHelperST --> {temp(1,X), X == 'int'}.
+intHelperST --> {currentScope(X), scope(Y), write('type mismatch in int expression in scope- '), writeln(X),
+	write('last created scope- '), writeln(Y), abort}.
 
 stringExprST --> ['"'], charListST, ['"'].
 
