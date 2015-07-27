@@ -552,7 +552,7 @@ intopNT --> ['+'].
 
 typeCheck(0,_,_):- currentScope(X), scope(Y), write('type error in scope- '), writeln(X),
 	write('last created scope- '), writeln(Y), abort.
-typeCheck(X,Y,Z):- symbolTable(X,Y,S,_,_), !, S == Z.
+typeCheck(X,Y,Z):- symbolTable(X,Y,S,_,_), S == Z.
 typeCheck(X,Y,Z):- child(S,X), typeCheck(S,Y,Z).
 
 scopeNoType(0,_,_):- currentScope(X), scope(Y), write('scope error in scope- '), writeln(X),
@@ -580,12 +580,12 @@ use(X,Y,Z):-child(S,X), use(S,Y,Z).
 initializeCheck:- \+ symbolTable(_,_,_,0,_).
 initializeCheck:- symbolTable(X,Y,Z,0,_), write('Warning- uninitialized variable exists in scope '),
 	write(X), write(' with identifier '), write(Y),
-	write(' and type '), writeln(Z).
+	write(' and type '), writeln(Z), initialize(X,Y,Z), initializeCheck.
 
 useCheck:- \+ symbolTable(_,_,_,_,0).
 useCheck:- symbolTable(X,Y,Z,_,0), write('Warning- unused variable exists in scope '), write(X),
 	write(' with identifier '), write(Y),
-	write(' and type '), writeln(Z).
+	write(' and type '), writeln(Z), use(X,Y,Z), useCheck.
 
 %the actual semantic analysis DCG. type and scope checking is done at certain bottle-necks within the grammar.
 
@@ -607,7 +607,7 @@ statementST --> blockST.
 
 printStatementST --> [print], ['('], exprST, [')'].
 
-assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y),scopeNoType(X,Y), typeCheck(X, Y, Z), initialize(X,Y,Z), retract(temp(_,_)) }.
+assignmentStatementST --> idST, {temp(0,T), asserta(temp(2,T)), retract(temp(0,_))}, [=], exprST, {currentScope(X), temp(1,Z), temp(2,Y),scopeNoType(X,Y,_), typeCheck(X, Y, Z), initialize(X,Y,Z), retract(temp(_,_)) }.
 
 varDeclST --> typeST, idST, {currentScope(X), retract(temp(0,Y)), retract(temp(1,Z)),redeclareCheck(X,Y), asserta(symbolTable(X,Y,Z,0,0))}.
 
