@@ -28,6 +28,7 @@ compile(Filename):-
 	assert(currentScope(0)),
 	assert(scope(0)),
 	assert(generatedCode("")),
+	assert(heap("")),
 	programST(X, []), !,
 	writeln('Semantic Analysis succeeded,'),
 	listing(symbolTable/5),
@@ -56,6 +57,7 @@ generateCode(Filename):-
 	assert(currentScope(0)),
 	assert(scope(0)),
 	assert(generatedCode("")),
+	assert(heap("")),
 	programST(X, []), !,
 	writeln('Semantic Analysis succeeded,'),
 	listing(symbolTable/5),
@@ -64,7 +66,7 @@ generateCode(Filename):-
 	retractall(scope(_)),retractall(currentScope(_)),
 	assert(currentScope(0)), assert(scope(0)),
 	programCG(X, []), !,
-	%backpatch,
+	backpatch,
 	write('Code- '),generatedCode(Y),!,
 	writeln(Y).
 
@@ -900,7 +902,7 @@ backpatch:-retract(staticData(T,V,S,O)),backpatchHelper(T,V,S,O), backpatch.
 backpatch:- tempVar(_,Offset), generatedCode(X), heap(Y), string_concat(X,Y,Z), string_length(Z, Length), Test is Length + Offset, !, Test =< 255.
 backpatch:- writeln('Error: Code too long'), !, fail.
 
-backpatchHelper(T,_,_,O):- retract(generatedCode(X)),string_length(X,CodeLength),NumberLocation is CodeLength + O,split_string(X,T,"",L),format(string(Location),'~16R',NumberLocation),
+backpatchHelper(T,_,_,O):- retract(generatedCode(X)),string_length(X,CodeLength),NumberLocation is (CodeLength + O)*256,atomic_list_concat(L,T,X),format(string(Location),'~16R',NumberLocation),
 	atomics_to_string(L,Location,Z), asserta(generatedCode(Z)).
 
 %DCG that generates code.
@@ -933,13 +935,13 @@ printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(He
 
 assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)), asserta(temp(1,Type))},assignmentHelperCG.
 
-assignmentHelperCG --> {temp(1,Type), Type == 'int',currentScope(Scope)}, [=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
+assignmentHelperCG --> {temp(1,Type), Type == 'int',currentScope(Scope),temp(0,Identifier)}, [=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
 	staticData(NewT,NewIdentifier,Scope,_), string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentHelperCG --> {temp(1,Type), Type == 'int',currentScope(Scope)},[=],{assert(temp('intTest','true'))},exprCG,{staticData(T,Identifier,Scope,_),
+assignmentHelperCG --> {temp(1,Type), Type == 'int',currentScope(Scope),temp(0,Identifier)},[=],{assert(temp('intTest','true'))},exprCG,{staticData(T,Identifier,Scope,_),
 	retract(generatedCode(X)), string_concat("8D",T,Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope)},[=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
+assignmentHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier)},[=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
 	staticData(NewT,NewIdentifier,Scope,_), string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope)},[=],exprCG,{heap(Heap), string_length(Heap,Length),Position is 253 - Length,
+assignmentHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier)},[=],exprCG,{heap(Heap), string_length(Heap,Length),Position is 253 - Length,
 	format(string(Location), '~16R', Position), string_concat("AD", Location, V), staticData(T, Identifier, Scope,_), string_concat(V, "008D", W), string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X, Y, Z),asserta(generatedCode(Z))}.
 
 varDeclCG --> [int], idCG, {generatedCode(X), string_concat(X,"A9008D",Y), tempVar(T, Offset), string_concat(Y, T, Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
