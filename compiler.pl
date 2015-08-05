@@ -58,6 +58,7 @@ generateCode(Filename):-
 	assert(scope(0)),
 	assert(generatedCode("")),
 	assert(heap("")),
+	assert(heapString("")),
 	programST(X, []), !,
 	writeln('Semantic Analysis succeeded,'),
 	listing(symbolTable/5),
@@ -906,7 +907,7 @@ backpatchHelper(T,_,_,O):- retract(generatedCode(X)),string_length(X,CodeLength)
 	atomics_to_string(L,Location,Z), asserta(generatedCode(Z)).
 
 %DCG that generates code.
-%TODO-boolean expressions need to be handled, while statements, if statements
+%TODO-boolean expressions need to be handled, while statements, if statements, add print helpers, and pad final product with 0's
 
 programCG --> blockCG, [$].
 
@@ -922,27 +923,31 @@ statementCG --> whileStatementCG.
 statementCG --> ifStatementCG.
 statementCG --> blockCG.
 
-printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='string',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
-	string_concat(V, "A202FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='int',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
-	string_concat(V, "A201FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),Type=='boolean',staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
-	string_concat(V, "A201FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}, [')'].
+printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)),asserta(temp(1,Type))}, printHelperCG, [')'].
 printStatementCG --> [print], ['('], intExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], booleanExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 253 - Length, format(string(Location), '~16R', Position), string_concat("AC", Location, W),
 	string_concat(W,"00A202FF",Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}, [')'].
 
+printHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier),staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
+	string_concat(V, "A202FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}.
+printHelperCG --> {temp(0,Identifier),currentScope(Scope),staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
+	string_concat(V, "A201FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}.
+
 assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)), asserta(temp(1,Type))},assignmentHelperCG.
 
-assignmentHelperCG --> {temp(1,Type), Type == 'int',currentScope(Scope),temp(0,Identifier)}, [=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
-	staticData(NewT,NewIdentifier,Scope,_), string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentHelperCG --> {temp(1,Type), Type == 'int',currentScope(Scope),temp(0,Identifier)},[=],{assert(temp('intTest','true'))},exprCG,{staticData(T,Identifier,Scope,_),
+assignmentHelperCG --> {temp(1,Type), Type == 'int',temp(0,Identifier), retractall(temp(0,_)), asserta(temp(0,Identifier))}, [=],intAssignmentCG.
+assignmentHelperCG --> {temp(1,Type), Type == 'string',temp(0,Identifier), retractall(temp(0,_)), asserta(temp(0,Identifier))},[=],stringAssignmentCG.
+
+intAssignmentCG --> {temp(0,Identifier)},idCG,{temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),staticData(NewT,NewIdentifier,Scope,_), 
+	string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
+intAssignmentCG --> {temp(0,Identifier),assert(temp('intTest','true'))},exprCG,{currentScope(Scope),staticData(T,Identifier,Scope,_),
 	retract(generatedCode(X)), string_concat("8D",T,Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier)},[=],idCG,{temp(0,NewIdentifier),staticData(T,Identifier,Scope,_),
-	staticData(NewT,NewIdentifier,Scope,_), string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-assignmentHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier)},[=],exprCG,{heap(Heap), string_length(Heap,Length),Position is 253 - Length,
-	format(string(Location), '~16R', Position), string_concat("AD", Location, V), staticData(T, Identifier, Scope,_), string_concat(V, "008D", W), string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X, Y, Z),asserta(generatedCode(Z))}.
+stringAssignmentCG --> {temp(0,Identifier)},idCG,{temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),staticData(NewT,NewIdentifier,Scope,_),
+	string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
+stringAssignmentCG --> {temp(0,Identifier)},exprCG,{currentScope(Scope),heap(Heap), string_length(Heap,Length),Position is 253 - Length,
+	format(string(Location), '~16R', Position), string_concat("AD", Location, V), staticData(T, Identifier, Scope,_), string_concat(V, "008D", W),
+	string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X, Y, Z),asserta(generatedCode(Z))}.
 
 varDeclCG --> [int], idCG, {generatedCode(X), string_concat(X,"A9008D",Y), tempVar(T, Offset), string_concat(Y, T, Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
 varDeclCG --> [string], idCG, {tempVar(T, Offset),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
