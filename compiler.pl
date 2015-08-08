@@ -907,7 +907,7 @@ backpatchHelper(T,_,_,O):- retract(generatedCode(X)),string_length(X,CodeLength)
 	atomics_to_string(L,Location,Z), asserta(generatedCode(Z)).
 
 %DCG that generates code.
-%TODO-boolean expressions need to be handled, while statements, if statements, add print helpers, and pad final product with 0's
+%TODO-boolean expressions need to be handled, while statements, if statements, and pad final product with 0's
 
 programCG --> blockCG, [$].
 
@@ -974,12 +974,28 @@ intHelperCG --> digitCG, {temp(0,Digit), retract(generatedCode(X)), string_conca
 
 stringExprCG --> ['"'], charListCG, {retract(heapString(W)),string_concat(W,"00",X), retract(heap(Y)), string_concat(X,Y,Z), asserta(heap(Z))}, ['"'].
 
-booleanExprCG --> ['('], exprCG, boolopCG, exprCG, [')'].
+booleanExprCG --> ['('], intExprCG,boolopCG, idCG,{retract(generatedCode(X)),temp(0,Identifier),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(X,"8DFF00AEFF00EC",Y), 
+	string_concat(Y,T,Z),asserta(generatedCode(Z))},booleanHelperCG,[')'].
+booleanExprCG --> ['('], intExprCG,{retract(generatedCode(X)),string_concat(X,"8DFF00AEFF00",W),asserta(generatedCode(W))}, boolopCG, intExprCG, {retract(generatedCode(Y)),
+	string_concat(Y,"8DFF00ECFF00",Z),asserta(generatedCode(Z))},booleanHelperCG, [')'].
+booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, idCG, {retract(generatedCode(X)),temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),
+	string_concat(X,"AE",W),string_concat(W,T,V),staticData(NewT,NewIdentifier,Scope,_),string_concat(V,"EC",Y), string_concat(Y,NewT,Z),asserta(generatedCode(Z))}, booleanHelperCG, [')'].
+booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, exprCG, booleanHelperCG, [')'].
+booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, stringExprCG, booleanHelperCG, [')'].
+booleanExprCG --> ['('], booleanExprCG, boolopCG, idCG, [')'].
+booleanExprCG --> ['('], booleanExprCG, boolopCG, booleanExprCG, [')'].
+booleanExprCG --> ['('], stringExprCG, boolopCG, stringExprCG, [')'].
+booleanExprCG --> ['('], stringExprCG, boolopCG, idCG, [')'].
 booleanExprCG --> boolvalCG.
+
+booleanHelperCG --> {temp('boolop',Boolop), Boolop == "==", retract(generatedCode(X)), string_length(X, Length), NewLength is Length + 6, format(string(LengthString),'~16R',NewLength),
+	string_concat("A900D0",LengthString,W),string_concat(W,"A901",Y),string_concat(X,Y,Z),asserta(generatedCode(Z))}.
+booleanHelperCG --> {temp('boolop',Boolop), Boolop == "!=", retract(generatedCode(X)), string_length(X, Length), NewLength is Length + 6, format(string(LengthString),'~16R',NewLength),
+	string_concat("A901D0",LengthString,W),string_concat(W,"A900",Y),string_concat(X,Y,Z),asserta(generatedCode(Z))}.
 
 idCG --> charCG.
 
-charListCG --> charCG, {retract(temp('ascii',CharCode)), retract(temp(_,_)), retract(heapString(X)), string_concat(X,CharCode,Z), asserta(heapString(Z))}, charListCG.
+charListCG --> charCG, {retract(temp('ascii',CharCode)), retractall(temp(_,_)), retract(heapString(X)), string_concat(X,CharCode,Z), asserta(heapString(Z))}, charListCG.
 charListCG --> spaceCG, {retract(heapString(X)), string_concat(X, "20", Z), asserta(heapString(Z))}, charListCG.
 charListCG --> [].
 
@@ -1023,10 +1039,10 @@ digitCG --> ['8'],{asserta(temp(0,"8"))}.
 digitCG --> ['9'],{asserta(temp(0,"9"))}.
 digitCG --> ['0'],{asserta(temp(0,"0"))}.
 
-boolopCG --> ['=='].
-boolopCG --> ['!='].
+boolopCG --> ['=='], {retractall(temp('boolop',_)),asserta(temp('boolop',"=="))}.
+boolopCG --> ['!='], {retractall(temp('boolop',_)),asserta(temp('boolop',"!="))}.
 
-boolvalCG --> [false].
-boolvalCG --> [true].
+boolvalCG --> [false],{retract(generatedCode(X)), string_concat(X, "A900",Y), asserta(generatedCode(Y))}.
+boolvalCG --> [true],{retract(generatedCode(X)), string_concat(X, "A901",Y), asserta(generatedCode(Y))}.
 
 intopCG --> ['+'].
