@@ -980,10 +980,13 @@ booleanExprCG --> ['('], intExprCG,{retract(generatedCode(X)),string_concat(X,"8
 	string_concat(Y,"8DFF00ECFF00",Z),asserta(generatedCode(Z))},booleanHelperCG, [')'].
 booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, idCG, {retract(generatedCode(X)),temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),
 	string_concat(X,"AE",W),string_concat(W,T,V),staticData(NewT,NewIdentifier,Scope,_),string_concat(V,"EC",Y), string_concat(Y,NewT,Z),asserta(generatedCode(Z))}, booleanHelperCG, [')'].
-booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, exprCG, booleanHelperCG, [')'].
-booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, stringExprCG, booleanHelperCG, [')'].
-booleanExprCG --> ['('], booleanExprCG, boolopCG, idCG, [')'].
-booleanExprCG --> ['('], booleanExprCG, boolopCG, booleanExprCG, [')'].
+booleanExprCG --> ['('], idCG,{temp(0,Identifier),retract(generatedCode(X)),string_concat(X,"AE",V),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(V,T,W),asserta(generatedCode(W))},
+	boolopCG, exprCG,{retract(generatedCode(Y)), string_concat(Y,"8DFF00ECFF00",Z), asserta(generatedCode(Z))}, booleanHelperCG, [')'].
+booleanExprCG --> ['('], idCG, boolopCG, stringExprCG, booleanHelperCG, [')'].
+booleanExprCG --> ['('], booleanExprCG, boolopCG, idCG,{retract(generatedCode(X)),temp(0,Identifier),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(X,"8DFF00AEFF00EC",Y), 
+	string_concat(Y,T,Z),asserta(generatedCode(Z))}, [')'].
+booleanExprCG --> ['('], booleanExprCG,{retract(generatedCode(X)),string_concat(X,"8DFF00AEFF00",W),asserta(generatedCode(W))}, boolopCG, booleanExprCG, {retract(generatedCode(Y)),
+	string_concat(Y,"8DFF00ECFF00",Z),asserta(generatedCode(Z))}, [')'].
 booleanExprCG --> ['('], stringExprCG, boolopCG, stringExprCG, [')'].
 booleanExprCG --> ['('], stringExprCG, boolopCG, idCG, [')'].
 booleanExprCG --> boolvalCG.
