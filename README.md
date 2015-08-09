@@ -24,4 +24,4 @@ If you wish to check my code generation, use the command
 
 ?-generateCode(<filename>).
 
-it does everything that lexAndParse do, but generates some really okay code. Currently booleans are not fully implemented, because comparing strings is hard, and if/while has yet to be implemented. It also fails to pad the code with 0's between the code and the string, so at present you'll have to do that manually.
+it does everything that lexAndParse do, but generates some really okay code. Currently booleans are not fully implemented, because comparing strings is hard
