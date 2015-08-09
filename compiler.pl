@@ -938,8 +938,8 @@ statementCG --> blockCG.
 
 printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)),asserta(temp(1,Type))}, printHelperCG, [')'].
 printStatementCG --> [print], ['('], booleanExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 255 - Length/2, format(string(Location), '~|~`0t~16R~2+', Position), string_concat("AC", Location, W),
-	string_concat(W,"00A202FF",Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}, [')'].
+printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 255 - Length/2, format(string(Location), '~|~`0t~16R~2+', Position), string_concat("A0", Location, W),
+	string_concat(W,"A202FF",Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], {asserta(temp(intTest,'true'))},intExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 
 
@@ -950,8 +950,8 @@ printHelperCG --> {temp(0,Identifier),currentScope(Scope),staticData(T,Identifie
 
 assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)), asserta(temp(1,Type))},assignmentHelperCG.
 
-assignmentHelperCG --> {temp(1,Type), Type == 'string',temp(0,Identifier)},[=],stringAssignmentCG.
-assignmentHelperCG --> {temp(0,Identifier), retractall(temp(0,_)), asserta(temp(0,Identifier))}, [=],intAssignmentCG.
+assignmentHelperCG --> {temp(1,Type), Type == 'string'},[=],stringAssignmentCG.
+assignmentHelperCG --> [=],intAssignmentCG.
 
 
 intAssignmentCG --> {temp(0,Identifier)},idCG,{temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),staticData(NewT,NewIdentifier,Scope,_), 
