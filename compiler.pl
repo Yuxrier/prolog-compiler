@@ -10,6 +10,7 @@
 :- dynamic jumpData/2.		%table listing (temporary code, distance) for use in code generation
 :- dynamic heap/1.			%holds all of the strings made with heapString
 :- dynamic tempVarTable/1.	%keeps track of which temporary variable is being made next
+:- dynamic jumpVarTable/1.
 
 %main method. does everything except code generation
 compile(Filename):-
@@ -897,17 +898,23 @@ tempVar(T,Y):- retract(tempVarTable(X)), Y is X + 1, asserta(tempVarTable(Y)), n
 	string_concat("T", S, Z), string_concat(Z, "XX", T).
 tempVar(T,0):- asserta(tempVarTable(0)), T = "T0XX".
 
-staticData(T,V,S,O):-child(P,S), staticData(T,V,P,O).
+jumpVar(J,Y):- retract(jumpVarTable(X)), Y is X + 1, asserta(jumpVarTable(Y)), number_string(Y,S),
+	string_concat("J", S, Z), string_concat(Z, "XX", J).
+jumpVar(J,0):- asserta(jumpVarTable(0)), J = "J0XX".
 
-backpatch:-retract(staticData(T,V,S,O)),backpatchHelper(T,V,S,O), backpatch.
+staticData(T,V,S,O):- child(P,S), staticData(T,V,P,O).
+
+backpatch:- retract(staticData(T,V,S,O)),backpatchHelper(T,V,S,O), backpatch.
+backpatch:- retract(jumpData(T,J)),backpatchHelper(T,J),backpatch.
 backpatch:- tempVar(_,Offset), generatedCode(X), heap(Y), string_concat(X,Y,Z), string_length(Z, Length), Test is Length + Offset, !, Test =< 255.
 backpatch:- writeln('Error: Code too long'), !, fail.
 
 backpatchHelper(T,_,_,O):- retract(generatedCode(X)),string_length(X,CodeLength),NumberLocation is (CodeLength + O)*256,atomic_list_concat(L,T,X),format(string(Location),'~16R',NumberLocation),
 	atomics_to_string(L,Location,Z), asserta(generatedCode(Z)).
+backpatchHelper(T,J):- retract(generatedCode(X)),format(string(Jump),'~|~`0t~16R~2+',J),string_concat("D0",Jump,Y),atomic_list_concat(L,T,X),atomics_to_string(L,Y,Z),asserta(generatedCode(Z)).
 
 %DCG that generates code.
-%TODO-boolean expressions need to be handled, while statements, if statements, and pad final product with 0's
+%TODO-pad final product with 0's
 
 programCG --> blockCG, [$].
 
@@ -926,7 +933,7 @@ statementCG --> blockCG.
 printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)),asserta(temp(1,Type))}, printHelperCG, [')'].
 printStatementCG --> [print], ['('], intExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], booleanExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
-printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 253 - Length, format(string(Location), '~16R', Position), string_concat("AC", Location, W),
+printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 255 - Length, format(string(Location), '~|~`0t~16R~2+', Position), string_concat("AC", Location, W),
 	string_concat(W,"00A202FF",Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}, [')'].
 
 printHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier),staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
@@ -945,17 +952,20 @@ intAssignmentCG --> {temp(0,Identifier),assert(temp('intTest','true'))},exprCG,{
 	retract(generatedCode(X)), string_concat("8D",T,Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
 stringAssignmentCG --> {temp(0,Identifier)},idCG,{temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),staticData(NewT,NewIdentifier,Scope,_),
 	string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
-stringAssignmentCG --> {temp(0,Identifier)},exprCG,{currentScope(Scope),heap(Heap), string_length(Heap,Length),Position is 253 - Length,
-	format(string(Location), '~16R', Position), string_concat("AD", Location, V), staticData(T, Identifier, Scope,_), string_concat(V, "008D", W),
+stringAssignmentCG --> {temp(0,Identifier)},exprCG,{currentScope(Scope),heap(Heap), string_length(Heap,Length),Position is 255 - Length,
+	format(string(Location), '~|~`0t~16R~2+', Position), string_concat("AD", Location, V), staticData(T, Identifier, Scope,_), string_concat(V, "008D", W),
 	string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X, Y, Z),asserta(generatedCode(Z))}.
 
 varDeclCG --> [int], idCG, {generatedCode(X), string_concat(X,"A9008D",Y), tempVar(T, Offset), string_concat(Y, T, Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
 varDeclCG --> [string], idCG, {tempVar(T, Offset),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
 varDeclCG --> [boolean], idCG, {generatedCode(X), string_concat(X,"A9008D",Y), tempVar(T, Offset), string_concat(Y,T,Z),asserta(generatedCode(Z)),temp(0,Identifier),currentScope(Scope),assert(staticData(T,Identifier,Scope,Offset))}.
 
-whileStatementCG --> [while], booleanExprCG, blockCG.
+whileStatementCG --> [while],{generatedCode(L),string_length(L,Length)}, booleanExprCG, {retract(generatedCode(X)),jumpVar(J,_),string_concat(X,J,Y),asserta(generatedCode(Y))}, blockCG,
+	{retract(generatedCode(W)),string_length(W,JumpDistance), assert(jumpData(J,JumpDistance)),format(string(LengthString),'~|~`0t~16R~2+',Length),string_concat("A201ECFE00D0",LengthString,V),string_concat(W,V,Z),
+	asserta(generatedCode(Z))}.
 
-ifStatementCG --> [if], booleanExprCG, blockCG.
+ifStatementCG --> [if], booleanExprCG, {retract(generatedCode(X)),jumpVar(J,_),string_concat(X,J,Y),asserta(generatedCode(Y))}, blockCG,
+	{retract(generatedCode(Z)),string_length(Z,JumpDistance), assert(jumpData(J,JumpDistance))}.
 
 exprCG --> intExprCG.
 exprCG --> stringExprCG.
@@ -991,9 +1001,9 @@ booleanExprCG --> ['('], stringExprCG, boolopCG, stringExprCG, [')'].
 booleanExprCG --> ['('], stringExprCG, boolopCG, idCG, [')'].
 booleanExprCG --> boolvalCG.
 
-booleanHelperCG --> {temp('boolop',Boolop), Boolop == "==", retract(generatedCode(X)), string_length(X, Length), NewLength is Length + 6, format(string(LengthString),'~16R',NewLength),
+booleanHelperCG --> {temp('boolop',Boolop), Boolop == "==", retract(generatedCode(X)), string_length(X, Length), NewLength is Length + 6, format(string(LengthString),'~|~`0t~16R~2+',NewLength),
 	string_concat("A900D0",LengthString,W),string_concat(W,"A901",Y),string_concat(X,Y,Z),asserta(generatedCode(Z))}.
-booleanHelperCG --> {temp('boolop',Boolop), Boolop == "!=", retract(generatedCode(X)), string_length(X, Length), NewLength is Length + 6, format(string(LengthString),'~16R',NewLength),
+booleanHelperCG --> {temp('boolop',Boolop), Boolop == "!=", retract(generatedCode(X)), string_length(X, Length), NewLength is Length + 6, format(string(LengthString),'~|~`0t~16R~2+',NewLength),
 	string_concat("A901D0",LengthString,W),string_concat(W,"A900",Y),string_concat(X,Y,Z),asserta(generatedCode(Z))}.
 
 idCG --> charCG.
