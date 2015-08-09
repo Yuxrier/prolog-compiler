@@ -10,7 +10,7 @@
 :- dynamic jumpData/2.		%table listing (temporary code, distance) for use in code generation
 :- dynamic heap/1.			%holds all of the strings made with heapString
 :- dynamic tempVarTable/1.	%keeps track of which temporary variable is being made next
-:- dynamic jumpVarTable/1.
+:- dynamic jumpVarTable/1.  %keeps track of which jump temporary variable is being made next
 
 %main method. does everything except code generation
 compile(Filename):-
@@ -39,7 +39,8 @@ compile(Filename):-
 %clears all tables so that multiple things can be compiled
 clearDictionaries:-retractall(symbolTable(_,_,_,_,_)),retractall(scope(_)),retractall(currentScope(_)),
 retractall(child(_,_)),retractall(temp(_,_)), retractall(generatedCode(_)),retractall(heapString(_)),
-retractall(staticData(_,_,_,_)),retractall(jumpData(_,_)), retractall(heap(_)),retractall(tempVarTable(_)).
+retractall(staticData(_,_,_,_)),retractall(jumpData(_,_)), retractall(heap(_)),retractall(tempVarTable(_)),
+retractall(jumpVarTable(_)).
 
 %compiles and generates code
 generateCode(Filename):-
@@ -906,8 +907,10 @@ staticData(T,V,S,O):- child(P,S), staticData(T,V,P,O).
 
 backpatch:- retract(staticData(T,V,S,O)),backpatchHelper(T,V,S,O), backpatch.
 backpatch:- retract(jumpData(T,J)),backpatchHelper(T,J),backpatch.
-backpatch:- tempVar(_,Offset), generatedCode(X), heap(Y), string_concat(X,Y,Z), string_length(Z, Length), Test is Length/2 + Offset, !, Test =< 255, pad(Length).
-backpatch:- writeln('Error: Code too long'), !, fail.
+backpatch:- tempVar(_,Offset), generatedCode(X), heap(Y), string_concat(X,Y,Z), string_length(Z, Length), Test is Length/2 + Offset, backpatchTest(Test), pad(Length).
+
+backpatchTest(Test):- Test=<255.
+backpatchTest(_):- write('Error: code too long'), abort.
 
 pad(510):- retract(generatedCode(X)), retract(heap(Y)), string_concat(X,Y,Z), asserta(generatedCode(Z)).
 pad(Length):- retract(generatedCode(X)), string_concat(X,"00",Z),asserta(generatedCode(Z)),NewLength is Length + 2, pad(NewLength).
@@ -934,10 +937,11 @@ statementCG --> ifStatementCG.
 statementCG --> blockCG.
 
 printStatementCG --> [print], ['('], idCG, {temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)),asserta(temp(1,Type))}, printHelperCG, [')'].
-printStatementCG --> [print], ['('], intExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], booleanExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
 printStatementCG --> [print], ['('], stringExprCG, {heap(Heap), string_length(Heap,Length), Position is 255 - Length/2, format(string(Location), '~|~`0t~16R~2+', Position), string_concat("AC", Location, W),
 	string_concat(W,"00A202FF",Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}, [')'].
+printStatementCG --> [print], ['('], {asserta(temp(intTest,'true'))},intExprCG, {retract(generatedCode(X)), string_concat(X,"8DFF00ACFF00A201FF",Z),asserta(generatedCode(Z))}, [')'].
+
 
 printHelperCG --> {temp(1,Type), Type == 'string', currentScope(Scope),temp(0,Identifier),staticData(T,Identifier,Scope,_), string_concat("AC", T, V),
 	string_concat(V, "A202FF", Y), retract(generatedCode(X)), string_concat(X, Y, Z), asserta(generatedCode(Z))}.
@@ -946,8 +950,9 @@ printHelperCG --> {temp(0,Identifier),currentScope(Scope),staticData(T,Identifie
 
 assignmentStatementCG --> idCG,{temp(0,Identifier),currentScope(Scope),scopeNoType(Scope,Identifier,Type),retractall(temp(1,_)), asserta(temp(1,Type))},assignmentHelperCG.
 
-assignmentHelperCG --> {temp(1,Type), Type == 'int',temp(0,Identifier), retractall(temp(0,_)), asserta(temp(0,Identifier))}, [=],intAssignmentCG.
-assignmentHelperCG --> {temp(1,Type), Type == 'string',temp(0,Identifier), retractall(temp(0,_)), asserta(temp(0,Identifier))},[=],stringAssignmentCG.
+assignmentHelperCG --> {temp(1,Type), Type == 'string',temp(0,Identifier)},[=],stringAssignmentCG.
+assignmentHelperCG --> {temp(0,Identifier), retractall(temp(0,_)), asserta(temp(0,Identifier))}, [=],intAssignmentCG.
+
 
 intAssignmentCG --> {temp(0,Identifier)},idCG,{temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),staticData(NewT,NewIdentifier,Scope,_), 
 	string_concat("AD",NewT,V),string_concat(V,"8D",W),string_concat(W,T,Y), retract(generatedCode(X)), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
@@ -976,7 +981,7 @@ exprCG --> booleanExprCG.
 exprCG --> idCG.
 
 %slightly inconsistant handling of int expressions is necessary to ensure that things get added to the generated code properly and that the generated code doesn't get deleted.
-intExprCG --> {retract(temp('intTest',Test)), Test == 'true'}, intHelperCG.
+intExprCG --> {retract(temp('intTest',Test)), Test == 'true', retractall('intTest')}, intHelperCG.
 intExprCG --> digitCG, {temp(0,Digit), string_concat("A90", Digit, W), string_concat(W, "6DFF008DFF00", Y)}, intopCG, idCG,{retract(generatedCode(X)), string_concat(X,Y,V), temp(0,Identifier), currentScope(Scope), staticData(T,Identifier,Scope,_), string_concat("AD",T,U), string_concat(U,"6DFF00",S),string_concat(V,S,Z),asserta(generatedCode(Z))}.
 intExprCG --> digitCG, intopCG, {temp(0,Digit), retract(generatedCode(X)), string_concat("A90", Digit, W), string_concat(W, "6DFF008DFF00", Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}, intExprCG.
 intExprCG --> digitCG, {temp(0,Digit), retract(generatedCode(X)), string_concat("A90", Digit, W), string_concat(W, "6DFF00",Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
@@ -985,16 +990,16 @@ intHelperCG --> digitCG, {temp(0,Digit), string_concat("A90",Digit,W), string_co
 intHelperCG --> digitCG, intopCG, {temp(0,Digit), retract(generatedCode(X)), string_concat("A90",Digit,W), string_concat(W,"8DFF00",Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}, intExprCG.
 intHelperCG --> digitCG, {temp(0,Digit), retract(generatedCode(X)), string_concat("A90", Digit, Y), string_concat(X,Y,Z), asserta(generatedCode(Z))}.
 
-stringExprCG --> ['"'], charListCG, {retract(heapString(W)),string_concat(W,"00",X), retract(heap(Y)), string_concat(X,Y,Z), asserta(heap(Z))}, ['"'].
+stringExprCG --> ['"'], charListCG, {retract(heapString(W)),string_concat(W,"00",X), retract(heap(Y)), string_concat(X,Y,Z), asserta(heap(Z)),asserta(heapString(""))}, ['"'].
 
-booleanExprCG --> ['('], intExprCG,boolopCG, idCG,{retract(generatedCode(X)),temp(0,Identifier),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(X,"8DFF00AEFF00EC",Y), 
+booleanExprCG --> ['('], {asserta(temp(intTest,'true'))},intExprCG,boolopCG, idCG,{retract(generatedCode(X)),temp(0,Identifier),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(X,"8DFF00AEFF00EC",Y), 
 	string_concat(Y,T,Z),asserta(generatedCode(Z))},booleanHelperCG,[')'].
-booleanExprCG --> ['('], intExprCG,{retract(generatedCode(X)),string_concat(X,"8DFF00AEFF00",W),asserta(generatedCode(W))}, boolopCG, intExprCG, {retract(generatedCode(Y)),
+booleanExprCG --> ['('], {asserta(temp(intTest,'true'))},intExprCG,{retract(generatedCode(X)),string_concat(X,"8DFF00AEFF00",W),asserta(generatedCode(W))}, boolopCG, {asserta(temp(intTest,'true'))},intExprCG, {retract(generatedCode(Y)),
 	string_concat(Y,"8DFF00ECFF00",Z),asserta(generatedCode(Z))},booleanHelperCG, [')'].
 booleanExprCG --> ['('], idCG,{temp(0,Identifier)}, boolopCG, idCG, {retract(generatedCode(X)),temp(0,NewIdentifier),currentScope(Scope),staticData(T,Identifier,Scope,_),
 	string_concat(X,"AE",W),string_concat(W,T,V),staticData(NewT,NewIdentifier,Scope,_),string_concat(V,"EC",Y), string_concat(Y,NewT,Z),asserta(generatedCode(Z))}, booleanHelperCG, [')'].
 booleanExprCG --> ['('], idCG,{temp(0,Identifier),retract(generatedCode(X)),string_concat(X,"AE",V),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(V,T,W),asserta(generatedCode(W))},
-	boolopCG, exprCG,{retract(generatedCode(Y)), string_concat(Y,"8DFF00ECFF00",Z), asserta(generatedCode(Z))}, booleanHelperCG, [')'].
+	boolopCG,{asserta(temp(intTest,'true'))}, exprCG,{retract(generatedCode(Y)), string_concat(Y,"8DFF00ECFF00",Z), asserta(generatedCode(Z))}, booleanHelperCG, [')'].
 booleanExprCG --> ['('], idCG, boolopCG, stringExprCG, booleanHelperCG, [')'].
 booleanExprCG --> ['('], booleanExprCG, boolopCG, idCG,{retract(generatedCode(X)),temp(0,Identifier),currentScope(Scope),staticData(T,Identifier,Scope,_),string_concat(X,"8DFF00AEFF00EC",Y), 
 	string_concat(Y,T,Z),asserta(generatedCode(Z))}, [')'].
@@ -1015,45 +1020,45 @@ charListCG --> charCG, {retract(temp('ascii',CharCode)), retractall(temp(_,_)), 
 charListCG --> spaceCG, {retract(heapString(X)), string_concat(X, "20", Z), asserta(heapString(Z))}, charListCG.
 charListCG --> [].
 
-charCG --> [a], {asserta(temp(0,a)),asserta(temp('ascii',"61"))}.
-charCG --> [b], {asserta(temp(0,b)),asserta(temp('ascii',"62"))}.
-charCG --> [c], {asserta(temp(0,c)),asserta(temp('ascii',"63"))}.
-charCG --> [d], {asserta(temp(0,d)),asserta(temp('ascii',"64"))}.
-charCG --> [e], {asserta(temp(0,e)),asserta(temp('ascii',"65"))}.
-charCG --> [f], {asserta(temp(0,f)),asserta(temp('ascii',"66"))}.
-charCG --> [g], {asserta(temp(0,g)),asserta(temp('ascii',"67"))}.
-charCG --> [h], {asserta(temp(0,h)),asserta(temp('ascii',"68"))}.
-charCG --> [i], {asserta(temp(0,i)),asserta(temp('ascii',"69"))}.
-charCG --> [j], {asserta(temp(0,j)),asserta(temp('ascii',"6A"))}.
-charCG --> [k], {asserta(temp(0,k)),asserta(temp('ascii',"6B"))}.
-charCG --> [l], {asserta(temp(0,l)),asserta(temp('ascii',"6C"))}.
-charCG --> [m], {asserta(temp(0,m)),asserta(temp('ascii',"6D"))}.
-charCG --> [n], {asserta(temp(0,n)),asserta(temp('ascii',"6E"))}.
-charCG --> [o], {asserta(temp(0,o)),asserta(temp('ascii',"6F"))}.
-charCG --> [p], {asserta(temp(0,p)),asserta(temp('ascii',"70"))}.
-charCG --> [q], {asserta(temp(0,q)),asserta(temp('ascii',"71"))}.
-charCG --> [r], {asserta(temp(0,r)),asserta(temp('ascii',"72"))}.
-charCG --> [s], {asserta(temp(0,s)),asserta(temp('ascii',"73"))}.
-charCG --> [t], {asserta(temp(0,t)),asserta(temp('ascii',"74"))}.
-charCG --> [u], {asserta(temp(0,u)),asserta(temp('ascii',"75"))}.
-charCG --> [v], {asserta(temp(0,v)),asserta(temp('ascii',"76"))}.
-charCG --> [w], {asserta(temp(0,w)),asserta(temp('ascii',"77"))}.
-charCG --> [x], {asserta(temp(0,x)),asserta(temp('ascii',"78"))}.
-charCG --> [y], {asserta(temp(0,y)),asserta(temp('ascii',"79"))}.
-charCG --> [z], {asserta(temp(0,z)),asserta(temp('ascii',"7A"))}.
+charCG --> [a], {retractall(temp(0,_)),asserta(temp(0,a)),asserta(temp('ascii',"61"))}.
+charCG --> [b], {retractall(temp(0,_)),asserta(temp(0,b)),asserta(temp('ascii',"62"))}.
+charCG --> [c], {retractall(temp(0,_)),asserta(temp(0,c)),asserta(temp('ascii',"63"))}.
+charCG --> [d], {retractall(temp(0,_)),asserta(temp(0,d)),asserta(temp('ascii',"64"))}.
+charCG --> [e], {retractall(temp(0,_)),asserta(temp(0,e)),asserta(temp('ascii',"65"))}.
+charCG --> [f], {retractall(temp(0,_)),asserta(temp(0,f)),asserta(temp('ascii',"66"))}.
+charCG --> [g], {retractall(temp(0,_)),asserta(temp(0,g)),asserta(temp('ascii',"67"))}.
+charCG --> [h], {retractall(temp(0,_)),asserta(temp(0,h)),asserta(temp('ascii',"68"))}.
+charCG --> [i], {retractall(temp(0,_)),asserta(temp(0,i)),asserta(temp('ascii',"69"))}.
+charCG --> [j], {retractall(temp(0,_)),asserta(temp(0,j)),asserta(temp('ascii',"6A"))}.
+charCG --> [k], {retractall(temp(0,_)),asserta(temp(0,k)),asserta(temp('ascii',"6B"))}.
+charCG --> [l], {retractall(temp(0,_)),asserta(temp(0,l)),asserta(temp('ascii',"6C"))}.
+charCG --> [m], {retractall(temp(0,_)),asserta(temp(0,m)),asserta(temp('ascii',"6D"))}.
+charCG --> [n], {retractall(temp(0,_)),asserta(temp(0,n)),asserta(temp('ascii',"6E"))}.
+charCG --> [o], {retractall(temp(0,_)),asserta(temp(0,o)),asserta(temp('ascii',"6F"))}.
+charCG --> [p], {retractall(temp(0,_)),asserta(temp(0,p)),asserta(temp('ascii',"70"))}.
+charCG --> [q], {retractall(temp(0,_)),asserta(temp(0,q)),asserta(temp('ascii',"71"))}.
+charCG --> [r], {retractall(temp(0,_)),asserta(temp(0,r)),asserta(temp('ascii',"72"))}.
+charCG --> [s], {retractall(temp(0,_)),asserta(temp(0,s)),asserta(temp('ascii',"73"))}.
+charCG --> [t], {retractall(temp(0,_)),asserta(temp(0,t)),asserta(temp('ascii',"74"))}.
+charCG --> [u], {retractall(temp(0,_)),asserta(temp(0,u)),asserta(temp('ascii',"75"))}.
+charCG --> [v], {retractall(temp(0,_)),asserta(temp(0,v)),asserta(temp('ascii',"76"))}.
+charCG --> [w], {retractall(temp(0,_)),asserta(temp(0,w)),asserta(temp('ascii',"77"))}.
+charCG --> [x], {retractall(temp(0,_)),asserta(temp(0,x)),asserta(temp('ascii',"78"))}.
+charCG --> [y], {retractall(temp(0,_)),asserta(temp(0,y)),asserta(temp('ascii',"79"))}.
+charCG --> [z], {retractall(temp(0,_)),asserta(temp(0,z)),asserta(temp('ascii',"7A"))}.
 
 spaceCG --> [' '].
 
-digitCG --> ['1'],{asserta(temp(0,"1"))}.
-digitCG --> ['2'],{asserta(temp(0,"2"))}.
-digitCG --> ['3'],{asserta(temp(0,"3"))}.
-digitCG --> ['4'],{asserta(temp(0,"4"))}.
-digitCG --> ['5'],{asserta(temp(0,"5"))}.
-digitCG --> ['6'],{asserta(temp(0,"6"))}.
-digitCG --> ['7'],{asserta(temp(0,"7"))}.
-digitCG --> ['8'],{asserta(temp(0,"8"))}.
-digitCG --> ['9'],{asserta(temp(0,"9"))}.
-digitCG --> ['0'],{asserta(temp(0,"0"))}.
+digitCG --> ['1'],{retractall(temp(0,_)),asserta(temp(0,"1"))}.
+digitCG --> ['2'],{retractall(temp(0,_)),asserta(temp(0,"2"))}.
+digitCG --> ['3'],{retractall(temp(0,_)),asserta(temp(0,"3"))}.
+digitCG --> ['4'],{retractall(temp(0,_)),asserta(temp(0,"4"))}.
+digitCG --> ['5'],{retractall(temp(0,_)),asserta(temp(0,"5"))}.
+digitCG --> ['6'],{retractall(temp(0,_)),asserta(temp(0,"6"))}.
+digitCG --> ['7'],{retractall(temp(0,_)),asserta(temp(0,"7"))}.
+digitCG --> ['8'],{retractall(temp(0,_)),asserta(temp(0,"8"))}.
+digitCG --> ['9'],{retractall(temp(0,_)),asserta(temp(0,"9"))}.
+digitCG --> ['0'],{retractall(temp(0,_)),asserta(temp(0,"0"))}.
 
 boolopCG --> ['=='], {retractall(temp('boolop',_)),asserta(temp('boolop',"=="))}.
 boolopCG --> ['!='], {retractall(temp('boolop',_)),asserta(temp('boolop',"!="))}.
